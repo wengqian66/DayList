@@ -117,7 +117,7 @@ public sealed class TaskRow : INotifyPropertyChanged
     }
 
     public string ReminderToolTip => string.IsNullOrEmpty(_reminderTime)
-        ? "设提醒：填这一天的时间（如 14:30）。需要 DayList 开着或在托盘才会响，不改笔记。"
+        ? "设提醒：滚动选择这一天的时间。需要 DayList 开着或在托盘才会响，不改笔记。"
         : $"{_reminderTime} 提醒。点击可改时间或清除。需要 DayList 开着或在托盘才会响。";
 
     public Visibility ReminderTimeVisibility =>

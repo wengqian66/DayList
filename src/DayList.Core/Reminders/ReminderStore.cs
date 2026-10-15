@@ -58,6 +58,25 @@ public static class ReminderSchedule
     public static string FormatClock(TimeOnly time) =>
         time.ToString("HH:mm", CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// Clock to show when the picker opens. An existing reminder is kept as-is.
+    /// Another day starts at 09:00. Today starts one minute ahead, or 23:59 if that minute would be tomorrow.
+    /// </summary>
+    public static TimeOnly SuggestTime(DateOnly date, DateTime now, string? existingClock = null)
+    {
+        if (TryParseClock(existingClock, out var existing))
+            return existing;
+
+        if (date != DateOnly.FromDateTime(now))
+            return new TimeOnly(9, 0);
+
+        var next = now.AddMinutes(1);
+        if (DateOnly.FromDateTime(next) != date)
+            return new TimeOnly(23, 59);
+
+        return new TimeOnly(next.Hour, next.Minute);
+    }
+
     public static bool TryGetDue(TaskReminder reminder, out DateTime due)
     {
         due = default;
