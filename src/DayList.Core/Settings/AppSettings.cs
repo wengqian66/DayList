@@ -12,6 +12,12 @@ public sealed class AppSettings
 
     public string SectionHeading { get; set; } = "## DayList";
 
+    public string InspirationHeading { get; set; } = "## 灵感";
+
+    public bool ReminderSound { get; set; } = true;
+
+    public bool ReminderToastOnly { get; set; }
+
     public string ApiBaseUrl { get; set; } = "";
 
     public string ApiKey { get; set; } = "";
@@ -55,6 +61,7 @@ public sealed class AppSettings
         DailyFolder = (DailyFolder ?? "").Replace('\\', '/').Trim().Trim('/');
         DailyFilePattern = string.IsNullOrWhiteSpace(DailyFilePattern) ? "YYYY-MM-DD" : DailyFilePattern.Trim();
         SectionHeading = string.IsNullOrWhiteSpace(SectionHeading) ? "## DayList" : SectionHeading.Trim();
+        InspirationHeading = NormalizeHeading(InspirationHeading, "## 灵感");
         ApiBaseUrl = (ApiBaseUrl ?? "").Trim().TrimEnd('/');
         ApiKey = (ApiKey ?? "").Trim();
         ApiModel = string.IsNullOrWhiteSpace(ApiModel) ? "gpt-4o-mini" : ApiModel.Trim();
@@ -69,6 +76,14 @@ public sealed class AppSettings
             WindowHeight = null;
     }
 
+    private static string NormalizeHeading(string? heading, string fallback)
+    {
+        var (level, title) = HeadingSpec.Parse(string.IsNullOrWhiteSpace(heading) ? fallback : heading);
+        if (string.IsNullOrWhiteSpace(title))
+            (level, title) = HeadingSpec.Parse(fallback);
+        return HeadingSpec.Format(level, title);
+    }
+
     public AppSettings Copy()
     {
         var copy = new AppSettings
@@ -77,6 +92,9 @@ public sealed class AppSettings
             DailyFolder = DailyFolder,
             DailyFilePattern = DailyFilePattern,
             SectionHeading = SectionHeading,
+            InspirationHeading = InspirationHeading,
+            ReminderSound = ReminderSound,
+            ReminderToastOnly = ReminderToastOnly,
             ApiBaseUrl = ApiBaseUrl,
             ApiKey = ApiKey,
             ApiModel = ApiModel,

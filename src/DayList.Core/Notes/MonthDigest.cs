@@ -19,7 +19,7 @@ public static class MonthDigest
             if (!snapshot.FileExists || !snapshot.SectionFound)
                 continue;
 
-            var body = snapshot.SectionBody.Trim();
+            var body = InspirationSection.Strip(snapshot.SectionBody, settings.InspirationHeading).Trim();
             if (body.Length == 0)
                 continue;
 

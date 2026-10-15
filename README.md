@@ -15,14 +15,14 @@ Windows 上的每日待办。清单不另存数据库，只读写 Obsidian 库�
 
 ## 下载安装（推荐）
 
-从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载 **DayList-Setup-1.0.0.exe**，双击安装即可。
+从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.1.0。
 
 - 自带 .NET 8 与 Windows App SDK，**无需再装 SDK 或运行时**
 - 默认装到 `Program Files\DayList`，可选桌面快捷方式
 - 首次打开后在设置里指定你的 **Obsidian 库文件夹**
 - 卸载后本机设置仍保留在 `%AppData%\DayList`（含 API Key，不会进安装包或仓库）
 
-当前版本：[v1.0.0](https://github.com/wengqian66/DayList/releases/tag/v1.0.0)
+当前版本：1.1.0。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。
 
 ## 环境
 
@@ -78,15 +78,27 @@ src\DayList.App\bin\Release\net8.0-windows10.0.19041.0\win-x64\DayList.exe
 
 API Key 以明文保存在本机的设置文件里，不会写进笔记。
 
+月报只读每日笔记里的 DayList 小节。旁边的「灵感」小节是随手记，**不会**送进月报，也不会参与「用自然语言生成计划」。
+
+## 灵感
+
+侧栏「灵感」把一句话写进当天笔记的单独小节，默认 `## 灵感`。那是普通列表，不是 `- [ ]` 任务，也不会和 DayList 混在一起。在 Obsidian 里改这一节，DayList 会重新读入。
+
+## 提醒
+
+任务行上的铃铛可以为这一天设一个时间。到点会弹出提醒（也可同时发系统通知）：关掉、延后 10 分钟，或打开这条任务。时间存在 `%AppData%\DayList\reminders.json`，不改 Markdown 任务行。
+
+**提醒需要 DayList 正在运行**，最小化到托盘也算。退出或重启之后，没有系统计划任务会代为弹出。再次打开时，12 小时内错过的会补一次。
+
 ## 打包安装程序
 
 本机需安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) 与 [Inno Setup 6](https://jrsoftware.org/isinfo.php)。在仓库根目录：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.0.0
+powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.1.0
 ```
 
-完成后得到 `dist\DayList-Setup-1.0.0.exe`（自包含 win-x64）。
+完成后得到 `dist\DayList-Setup-1.1.0.exe`（自包含 win-x64）。
 
 ## 测试
 
