@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
+using Windows.UI;
 using DayList.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -50,6 +51,13 @@ public sealed partial class MainPage : Page
     private int _statusToken;
     private int _statusDismissToken;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _statusTimer;
+    private readonly List<InspirationEntry> _inspirations = new();
+    private bool _inspirationDialogOpen;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _reminderTimer;
+    private readonly HashSet<string> _reminderInflight = new(StringComparer.Ordinal);
+    private readonly Queue<TaskReminder> _dueReminders = new();
+    private bool _showingReminder;
+    private int _reminderDialogRetries;
 
     public MainPage()
     {
@@ -144,12 +152,20 @@ public sealed partial class MainPage : Page
             LoadDay();
         else
             UpdateDateChrome();
+
+        _reminderTimer = DispatcherQueue.CreateTimer();
+        _reminderTimer.Interval = TimeSpan.FromSeconds(5);
+        _reminderTimer.IsRepeating = true;
+        _reminderTimer.Tick += (_, _) => CheckReminders();
+        _reminderTimer.Start();
+        CheckReminders();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _closed = true;
         _pageCts.Cancel();
+        _reminderTimer?.Stop();
         _watcher?.Dispose();
         _watcher = null;
     }
@@ -168,6 +184,7 @@ public sealed partial class MainPage : Page
             CancelSectionEdit();
             SetSectionChromeVisible(false);
             OverduePanel.Visibility = Visibility.Collapsed;
+            NavInspirationCount.Text = "";
         }
         else
         {
@@ -204,6 +221,8 @@ public sealed partial class MainPage : Page
         _rows.Clear();
         foreach (var task in snapshot.Tasks)
             _rows.Add(TaskRow.From(task));
+        ApplyInspirations(snapshot.Inspirations);
+        BindReminders();
         _knownHash = snapshot.ContentHash;
         PathText.Text = FormatNoteSubtitle(snapshot.RelativePath, snapshot.FileExists);
         ToolTipService.SetToolTip(PathText, snapshot.FullPath);
@@ -753,6 +772,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        ForgetReminder(row);
         _rows.Remove(row);
         Persist();
     }
@@ -816,11 +836,17 @@ public sealed partial class MainPage : Page
     {
         if (_closed || _textFocus > 0 || Suppressed || _pendingExternal)
             return;
-        if (sender is TextBox box && box.DataContext is TaskRow row && string.IsNullOrWhiteSpace(row.Text))
+        if (sender is TextBox box && box.DataContext is TaskRow row)
         {
-            _rows.Remove(row);
-            Persist();
-            return;
+            if (string.IsNullOrWhiteSpace(row.Text))
+            {
+                ForgetReminder(row);
+                _rows.Remove(row);
+                Persist();
+                return;
+            }
+
+            SyncReminderText(row);
         }
 
         Persist();
@@ -1242,8 +1268,8 @@ public sealed partial class MainPage : Page
         var monthLabel = _date.ToString("yyyy年M月", DisplayCulture);
         var exists = File.Exists(fullPath);
         var body = exists
-            ? $"将扫描 {monthLabel} 各日笔记里的 DayList 小节，用 AI 生成本月总结，并覆盖已有文件：\n{relative}"
-            : $"将扫描 {monthLabel} 各日笔记里的 DayList 小节，用 AI 生成本月总结，并写入：\n{relative}";
+            ? $"将扫描 {monthLabel} 各日笔记里的待办小节（不含灵感），用 AI 生成本月总结，并覆盖已有文件：\n{relative}"
+            : $"将扫描 {monthLabel} 各日笔记里的待办小节（不含灵感），用 AI 生成本月总结，并写入：\n{relative}";
 
         var confirm = SoftUi.CreateDialog(
             XamlRoot,
@@ -1419,7 +1445,21 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        if (snapshot.ContentHash == _knownHash || DayTask.SameList(snapshot.Tasks, CurrentTasks()))
+        if (snapshot.ContentHash == _knownHash)
+        {
+            ClearExternal();
+            return;
+        }
+
+        var tasksSame = DayTask.SameList(snapshot.Tasks, CurrentTasks());
+        var inspirationsSame = InspirationEntry.SameList(snapshot.Inspirations, _inspirations);
+        if (tasksSame && !inspirationsSame && _inspirationDialogOpen)
+            return;
+
+        if (!inspirationsSame && !_inspirationDialogOpen)
+            ApplyInspirations(snapshot.Inspirations);
+
+        if (tasksSame)
         {
             _knownHash = snapshot.ContentHash;
             ClearExternal();
@@ -1766,6 +1806,591 @@ public sealed partial class MainPage : Page
             Arguments = arguments,
             UseShellExecute = true
         });
+    }
+
+    private async void Inspiration_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_settings.HasVault)
+        {
+            ShowStatus("先连接 Obsidian 库，灵感才会写进当天笔记。", InfoBarSeverity.Warning);
+            return;
+        }
+
+        if (InspirationSection.SameHeading(_settings.SectionHeading, _settings.InspirationHeading))
+        {
+            ShowStatus("灵感小节和待办小节重名了，请在设置里改一个。", InfoBarSeverity.Warning, "打开设置", () => OpenSettings());
+            return;
+        }
+
+        var drafts = _inspirations
+            .Select(entry => new InspirationDraft(entry.TimeLabel, entry.Text, entry.RawLine))
+            .ToList();
+        var list = new StackPanel { Spacing = 8 };
+        var fresh = SoftUi.CreateDialogTextBox("此刻想到的…", acceptsReturn: true, minHeight: 88, maxHeight: 160);
+
+        void RebuildDrafts()
+        {
+            list.Children.Clear();
+            if (drafts.Count == 0)
+            {
+                list.Children.Add(new TextBlock
+                {
+                    Text = "这一天还没有灵感。",
+                    FontSize = 12,
+                    Foreground = new SolidColorBrush(Color.FromArgb(255, 0x7A, 0x6F, 0x62))
+                });
+                return;
+            }
+
+            foreach (var draft in drafts)
+            {
+                var row = new Grid { ColumnSpacing = 8 };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var time = new TextBlock
+                {
+                    Text = string.IsNullOrEmpty(draft.TimeLabel) ? "·" : draft.TimeLabel,
+                    FontSize = 12,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = new SolidColorBrush(Color.FromArgb(255, 0x7A, 0x6F, 0x62))
+                };
+                var box = SoftUi.CreateDialogTextBox(acceptsReturn: true, minHeight: 36, maxHeight: 96);
+                box.Text = draft.Text;
+                box.TextChanged += (_, _) => draft.Text = box.Text ?? "";
+                Grid.SetColumn(box, 1);
+                var delete = new Button
+                {
+                    Content = "删除",
+                    Padding = new Thickness(10, 6, 10, 6),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                delete.Click += (_, _) =>
+                {
+                    drafts.Remove(draft);
+                    RebuildDrafts();
+                };
+                Grid.SetColumn(delete, 2);
+                row.Children.Add(time);
+                row.Children.Add(box);
+                row.Children.Add(delete);
+                list.Children.Add(row);
+            }
+        }
+
+        RebuildDrafts();
+
+        var (_, inspirationTitle) = HeadingSpec.Parse(_settings.InspirationHeading);
+        var panel = new StackPanel { Spacing = 10, MaxWidth = 440 };
+        panel.Children.Add(SoftUi.CreateDialogBody(
+            $"写在当天笔记的「{inspirationTitle}」小节，是普通列表，不是待办。不会进入月报，也不会参与生成计划。"));
+        panel.Children.Add(new ScrollViewer
+        {
+            Content = list,
+            MaxHeight = 220,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        });
+        panel.Children.Add(fresh);
+
+        var dialog = SoftUi.CreateDialog(
+            XamlRoot,
+            "灵感 · " + _date.ToString("M月d日", DisplayCulture),
+            panel,
+            "保存");
+
+        _inspirationDialogOpen = true;
+        try
+        {
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+                return;
+
+            var kept = new List<InspirationEntry>();
+            foreach (var draft in drafts)
+            {
+                var text = (draft.Text ?? "").Trim();
+                if (text.Length == 0)
+                    continue;
+                kept.Add(new InspirationEntry
+                {
+                    TimeLabel = draft.TimeLabel,
+                    Text = text,
+                    RawLine = draft.RawLine
+                });
+            }
+
+            var added = (fresh.Text ?? "").Trim();
+            if (added.Length > 0)
+            {
+                kept.Add(new InspirationEntry
+                {
+                    TimeLabel = DateTime.Now.ToString("HH:mm", CultureInfo.InvariantCulture),
+                    Text = added
+                });
+            }
+
+            var result = DailyNoteStore.WriteInspirations(_settings, _date, kept);
+            ApplyInspirations(kept);
+            ArmWatcher(result.FullPath);
+            if (File.Exists(result.FullPath))
+                PathText.Text = FormatNoteSubtitle(result.RelativePath, true);
+            ShowStatus(kept.Count == 0 ? "已清空这一天的灵感。" : "已写入灵感。", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus(ex.Message, InfoBarSeverity.Error);
+        }
+        finally
+        {
+            _inspirationDialogOpen = false;
+            if (!_closed)
+                ReloadFromDisk();
+        }
+    }
+
+    private async void Remind_Click(object sender, RoutedEventArgs e)
+    {
+        if (Suppressed || (sender as FrameworkElement)?.DataContext is not TaskRow row)
+            return;
+        if (_pendingExternal)
+        {
+            ShowStatus("先处理笔记的外部更新，再设置提醒。", InfoBarSeverity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(row.Text))
+        {
+            ShowStatus("先写上任务内容，再设提醒。", InfoBarSeverity.Warning);
+            return;
+        }
+
+        var box = SoftUi.CreateDialogTextBox("例如 14:30");
+        box.Text = row.ReminderTime ?? "";
+        var error = new TextBlock
+        {
+            FontSize = 12,
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Color.FromArgb(255, 0xB3, 0x3A, 0x3A))
+        };
+        var panel = new StackPanel { Spacing = 8, MaxWidth = 380 };
+        panel.Children.Add(SoftUi.CreateDialogBody("设这一天的时间。到点会弹出提醒。DayList 需要开着，最小化到托盘也算；退出或重启后不会响。"));
+        panel.Children.Add(box);
+        panel.Children.Add(error);
+
+        var dialog = SoftUi.CreateDialog(
+            XamlRoot,
+            "提醒",
+            panel,
+            "保存",
+            "取消",
+            ContentDialogButton.Primary,
+            string.IsNullOrEmpty(row.ReminderId) ? null : "清除");
+        dialog.PrimaryButtonClick += (_, args) =>
+        {
+            if (!ReminderSchedule.TryParseClock(box.Text, out var time))
+            {
+                args.Cancel = true;
+                error.Text = "用 24 小时制，例如 09:30 或 14:05。";
+                return;
+            }
+
+            if (_date.ToDateTime(time) <= DateTime.Now)
+            {
+                args.Cancel = true;
+                error.Text = "这个时间已经过了。";
+            }
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result == ContentDialogResult.None)
+            return;
+
+        try
+        {
+            if (result == ContentDialogResult.Secondary)
+            {
+                ForgetReminder(row);
+                ShowStatus("已清除提醒。", InfoBarSeverity.Success);
+                return;
+            }
+
+            if (!ReminderSchedule.TryParseClock(box.Text, out var time))
+                return;
+
+            var saved = ReminderStore.SetForTask(
+                ReminderStore.DefaultPath,
+                row.ReminderId,
+                row.Text,
+                _date,
+                time);
+            row.ReminderId = saved.Id;
+            row.ReminderTime = saved.Time;
+            ShowStatus($"会在 {_date.ToString("M月d日", DisplayCulture)} {saved.Time} 提醒。", InfoBarSeverity.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("没能保存提醒：" + ex.Message, InfoBarSeverity.Error);
+        }
+    }
+
+    public void HandleReminderAction(string action, string id)
+    {
+        if (_closed || string.IsNullOrWhiteSpace(id))
+            return;
+
+        if (string.Equals(action, "snooze", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                ReminderStore.Snooze(ReminderStore.DefaultPath, id, DateTime.Now, 10);
+                _reminderInflight.Remove(id);
+                BindReminders();
+                ShowStatus("已延后 10 分钟。", InfoBarSeverity.Success);
+            }
+            catch (Exception ex)
+            {
+                ShowStatus("没能延后提醒：" + ex.Message, InfoBarSeverity.Warning);
+            }
+
+            return;
+        }
+
+        TaskReminder? reminder = null;
+        try
+        {
+            reminder = ReminderStore.Find(ReminderStore.DefaultPath, id);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("没能读取提醒：" + ex.Message, InfoBarSeverity.Warning);
+            return;
+        }
+
+        _host?.BringToFront();
+        if (reminder is null)
+        {
+            ShowStatus("这条提醒已经不在了。", InfoBarSeverity.Informational);
+            return;
+        }
+
+        FocusReminderTask(reminder.Date, reminder.TaskText);
+    }
+
+    private void CheckReminders()
+    {
+        if (_closed)
+            return;
+
+        List<TaskReminder> all;
+        try
+        {
+            all = ReminderStore.Load(ReminderStore.DefaultPath).ToList();
+        }
+        catch
+        {
+            return;
+        }
+
+        var due = ReminderSchedule.Partition(all, DateTime.Now);
+        var notify = new List<TaskReminder>();
+        foreach (var item in due.Notify)
+        {
+            if (_reminderInflight.Add(item.Id))
+                notify.Add(item);
+        }
+
+        if (due.Expire.Count == 0 && notify.Count == 0)
+            return;
+
+        foreach (var item in due.Expire)
+            item.Fired = true;
+        foreach (var item in notify)
+            item.Fired = true;
+
+        try
+        {
+            ReminderStore.Save(ReminderStore.DefaultPath, all);
+        }
+        catch (Exception ex)
+        {
+            foreach (var item in notify)
+                _reminderInflight.Remove(item.Id);
+            ShowStatus("没能保存提醒：" + ex.Message, InfoBarSeverity.Warning);
+            return;
+        }
+
+        foreach (var item in notify)
+            EnqueueReminder(CopyReminder(item));
+        if (!_closed)
+            BindReminders();
+    }
+
+    private void EnqueueReminder(TaskReminder reminder)
+    {
+        _dueReminders.Enqueue(reminder);
+        _ = DrainRemindersAsync();
+    }
+
+    private async Task DrainRemindersAsync()
+    {
+        if (_showingReminder || _closed)
+            return;
+
+        _showingReminder = true;
+        try
+        {
+            while (_dueReminders.Count > 0 && !_closed)
+            {
+                var reminder = _dueReminders.Dequeue();
+                await PresentReminderAsync(reminder);
+            }
+        }
+        finally
+        {
+            _showingReminder = false;
+            if (_dueReminders.Count > 0 && !_closed)
+                _ = DrainRemindersAsync();
+        }
+    }
+
+    private async Task PresentReminderAsync(TaskReminder reminder)
+    {
+        var toasted = ReminderNotifier.TryShow(reminder, _settings.ReminderSound);
+        if (_settings.ReminderToastOnly && toasted)
+        {
+            _reminderInflight.Remove(reminder.Id);
+            _reminderDialogRetries = 0;
+            return;
+        }
+
+        if (_settings.ReminderSound && !toasted)
+        {
+            try
+            {
+                ElementSoundPlayer.Play(ElementSoundKind.Invoke);
+            }
+            catch
+            {
+                // Sound is optional.
+            }
+        }
+
+        _host?.BringToFront();
+        if (XamlRoot is null)
+        {
+            _reminderInflight.Remove(reminder.Id);
+            return;
+        }
+
+        var body = SoftUi.CreateDialogBody($"{reminder.Time} · {reminder.TaskText}\n到点了。可以先关掉，十分钟后再提醒，或打开这条任务。");
+        var dialog = SoftUi.CreateDialog(
+            XamlRoot,
+            "提醒",
+            body,
+            "稍后 10 分钟",
+            "知道了",
+            ContentDialogButton.Close,
+            "打开任务");
+
+        ContentDialogResult result;
+        try
+        {
+            result = await dialog.ShowAsync();
+        }
+        catch
+        {
+            _reminderDialogRetries++;
+            if (_reminderDialogRetries > 8)
+            {
+                _reminderDialogRetries = 0;
+                _reminderInflight.Remove(reminder.Id);
+                ShowStatus("提醒窗口没能打开。若系统通知开着，通知里仍可延后或打开。", InfoBarSeverity.Warning);
+                return;
+            }
+
+            _dueReminders.Enqueue(reminder);
+            await Task.Delay(400);
+            return;
+        }
+
+        _reminderDialogRetries = 0;
+        _reminderInflight.Remove(reminder.Id);
+        if (result == ContentDialogResult.Primary)
+        {
+            try
+            {
+                ReminderStore.Snooze(ReminderStore.DefaultPath, reminder.Id, DateTime.Now, 10);
+                BindReminders();
+            }
+            catch (Exception ex)
+            {
+                ShowStatus("没能延后提醒：" + ex.Message, InfoBarSeverity.Warning);
+            }
+
+            return;
+        }
+
+        if (result == ContentDialogResult.Secondary)
+            FocusReminderTask(reminder.Date, reminder.TaskText);
+    }
+
+    private void FocusReminderTask(DateOnly date, string taskText)
+    {
+        if (!_settings.HasVault)
+        {
+            ShowStatus("提醒：" + taskText, InfoBarSeverity.Informational);
+            return;
+        }
+
+        if (_date != date)
+            SetDate(date);
+        if (_nav != MainNav.Today)
+        {
+            _nav = MainNav.Today;
+            RebuildList();
+            SyncNavChrome();
+        }
+
+        ShowStatus("提醒：" + taskText, InfoBarSeverity.Informational);
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => FocusRowByText(taskText));
+    }
+
+    private void FocusRowByText(string taskText)
+    {
+        var row = _rows.FirstOrDefault(item =>
+            string.Equals((item.Text ?? "").Trim(), taskText.Trim(), StringComparison.Ordinal));
+        if (row is null)
+            return;
+
+        FindTaskBox(WorkBody, row)?.Focus(FocusState.Programmatic);
+    }
+
+    private static TextBox? FindTaskBox(DependencyObject root, TaskRow row)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is TextBox box && ReferenceEquals(box.DataContext, row))
+                return box;
+            var nested = FindTaskBox(child, row);
+            if (nested is not null)
+                return nested;
+        }
+
+        return null;
+    }
+
+    private void ApplyInspirations(IReadOnlyList<InspirationEntry> entries)
+    {
+        _inspirations.Clear();
+        foreach (var entry in entries)
+        {
+            _inspirations.Add(new InspirationEntry
+            {
+                TimeLabel = entry.TimeLabel,
+                Text = entry.Text,
+                RawLine = entry.RawLine
+            });
+        }
+
+        NavInspirationCount.Text = _inspirations.Count == 0
+            ? ""
+            : _inspirations.Count.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private void BindReminders()
+    {
+        IReadOnlyList<TaskReminder> all;
+        try
+        {
+            all = ReminderStore.Load(ReminderStore.DefaultPath);
+        }
+        catch
+        {
+            all = Array.Empty<TaskReminder>();
+        }
+
+        var pool = all.Where(item => !item.Fired && item.Date == _date).ToList();
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var row in _rows)
+        {
+            TaskReminder? match = null;
+            if (!string.IsNullOrEmpty(row.ReminderId))
+                match = pool.FirstOrDefault(item => item.Id == row.ReminderId);
+            match ??= pool.FirstOrDefault(item =>
+                !used.Contains(item.Id)
+                && string.Equals(item.TaskText, (row.Text ?? "").Trim(), StringComparison.Ordinal));
+
+            if (match is null || !used.Add(match.Id))
+            {
+                row.ReminderId = null;
+                row.ReminderTime = null;
+                continue;
+            }
+
+            row.ReminderId = match.Id;
+            row.ReminderTime = match.Time;
+        }
+    }
+
+    private void ForgetReminder(TaskRow row)
+    {
+        if (string.IsNullOrEmpty(row.ReminderId))
+            return;
+
+        try
+        {
+            ReminderStore.Remove(ReminderStore.DefaultPath, row.ReminderId);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("没能删除提醒：" + ex.Message, InfoBarSeverity.Warning);
+        }
+
+        row.ReminderId = null;
+        row.ReminderTime = null;
+    }
+
+    private void SyncReminderText(TaskRow row)
+    {
+        if (string.IsNullOrEmpty(row.ReminderId))
+            return;
+
+        try
+        {
+            if (ReminderStore.Rename(ReminderStore.DefaultPath, row.ReminderId, row.Text))
+                return;
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("没能更新提醒：" + ex.Message, InfoBarSeverity.Warning);
+        }
+    }
+
+    private static TaskReminder CopyReminder(TaskReminder reminder) => new()
+    {
+        Id = reminder.Id,
+        TaskText = reminder.TaskText,
+        Date = reminder.Date,
+        Time = reminder.Time,
+        Fired = reminder.Fired
+    };
+
+    private sealed class InspirationDraft
+    {
+        public InspirationDraft(string? timeLabel, string text, string? rawLine)
+        {
+            TimeLabel = timeLabel;
+            Text = text;
+            RawLine = rawLine;
+        }
+
+        public string? TimeLabel { get; }
+
+        public string Text { get; set; }
+
+        public string? RawLine { get; }
     }
 
     private void PushSuppress() => _suppressCount++;

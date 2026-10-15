@@ -52,6 +52,8 @@ public sealed partial class SettingsWindow : Window
         VaultBox.Text = settings.VaultPath;
         FolderBox.Text = settings.DailyFolder;
         PatternBox.Text = settings.DailyFilePattern;
+        var (_, inspirationTitle) = HeadingSpec.Parse(settings.InspirationHeading);
+        InspirationBox.Text = inspirationTitle;
         ReportFolderBox.Text = settings.ReportFolder;
         ReportPatternBox.Text = settings.ReportFilePattern;
         ApiUrlBox.Text = settings.ApiBaseUrl;
@@ -61,6 +63,8 @@ public sealed partial class SettingsWindow : Window
         MinimizeToTrayBox.IsChecked = settings.MinimizeToTray;
         StartMinimizedBox.IsChecked = settings.StartMinimizedToTray;
         HotkeyBox.Text = HotkeySpec.Parse(settings.Hotkey).ToDisplay();
+        ReminderSoundBox.IsChecked = settings.ReminderSound;
+        ReminderToastOnlyBox.IsChecked = settings.ReminderToastOnly;
         _filling = false;
         UpdatePreview();
     }
@@ -73,6 +77,9 @@ public sealed partial class SettingsWindow : Window
             DailyFolder = FolderBox.Text ?? "",
             DailyFilePattern = PatternBox.Text ?? "",
             SectionHeading = _seed.SectionHeading,
+            InspirationHeading = string.IsNullOrWhiteSpace(InspirationBox.Text) ? "## 灵感" : InspirationBox.Text,
+            ReminderSound = ReminderSoundBox.IsChecked == true,
+            ReminderToastOnly = ReminderToastOnlyBox.IsChecked == true,
             ReportFolder = ReportFolderBox.Text ?? "",
             ReportFilePattern = ReportPatternBox.Text ?? "",
             ApiBaseUrl = ApiUrlBox.Text ?? "",
@@ -120,8 +127,12 @@ public sealed partial class SettingsWindow : Window
             var daily = VaultLayout.DailyRelative(draft, today);
             var report = VaultLayout.ReportRelative(draft, today);
             var (level, title) = HeadingSpec.Parse(draft.SectionHeading);
+            var (_, inspiration) = HeadingSpec.Parse(draft.InspirationHeading);
+            var clash = InspirationSection.SameHeading(draft.SectionHeading, draft.InspirationHeading)
+                ? " 灵感小节和待办小节同名，记灵感前需要改开。"
+                : "";
             PreviewText.Text =
-                $"今天写入 {daily} 的小节「{title}」（笔记里是 {HeadingSpec.Format(level, title)}）。AI 月报写入 {report}。热键 {draft.Hotkey}。";
+                $"今天写入 {daily} 的小节「{title}」（笔记里是 {HeadingSpec.Format(level, title)}）。灵感写入「{inspiration}」，不进月报。AI 月报写入 {report}。热键 {draft.Hotkey}。{clash}";
         }
         catch (Exception ex)
         {

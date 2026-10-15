@@ -25,6 +25,8 @@ public sealed partial class MainWindow : Window
         WindowChrome.SetAlwaysOnTop(this, settings.AlwaysOnTop);
 
         _tray = new TrayHost(this, ShowFromTray, FocusQuickAdd, ExitFromTray);
+        ReminderNotifier.Activated += OnReminderActivated;
+        ReminderNotifier.EnsureRegistered();
         var hotkeyError = ApplyHotkey(settings);
         if (hotkeyError is not null || _tray is { IsTrayVisible: false })
             Activated += ReportHotkeyOnReady;
@@ -56,6 +58,8 @@ public sealed partial class MainWindow : Window
         else
             _page.ShowShellStatus($"全局热键已生效：{HotkeySpec.Parse(settings.Hotkey).ToDisplay()}", isError: false);
     }
+
+    public void BringToFront() => ShowFromTray();
 
     public void FocusQuickAdd()
     {
@@ -115,8 +119,14 @@ public sealed partial class MainWindow : Window
 
         _closing = true;
         PersistPlacement();
+        ReminderNotifier.Unregister();
         _tray?.Dispose();
         _tray = null;
+    }
+
+    private void OnReminderActivated(string action, string id)
+    {
+        DispatcherQueue.TryEnqueue(() => _page.HandleReminderAction(action, id));
     }
 
     private void PersistPlacement()

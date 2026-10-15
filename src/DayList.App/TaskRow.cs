@@ -86,6 +86,46 @@ public sealed class TaskRow : INotifyPropertyChanged
 
     public string? RawLine { get; set; }
 
+    private string? _reminderId;
+    private string? _reminderTime;
+
+    public string? ReminderId
+    {
+        get => _reminderId;
+        set
+        {
+            if (_reminderId == value)
+                return;
+            _reminderId = value;
+            Notify();
+        }
+    }
+
+    public string? ReminderTime
+    {
+        get => _reminderTime;
+        set
+        {
+            if (_reminderTime == value)
+                return;
+            _reminderTime = value;
+            Notify();
+            Notify(nameof(ReminderToolTip));
+            Notify(nameof(ReminderTimeVisibility));
+            Notify(nameof(ReminderIconVisibility));
+        }
+    }
+
+    public string ReminderToolTip => string.IsNullOrEmpty(_reminderTime)
+        ? "设置提醒时间"
+        : $"{_reminderTime} 提醒，点击修改";
+
+    public Visibility ReminderTimeVisibility =>
+        string.IsNullOrEmpty(_reminderTime) ? Visibility.Collapsed : Visibility.Visible;
+
+    public Visibility ReminderIconVisibility =>
+        string.IsNullOrEmpty(_reminderTime) ? Visibility.Visible : Visibility.Collapsed;
+
     public int OriginIndex { get; set; } = -1;
 
     public double TextOpacity => IsDone ? 0.5 : 1;

@@ -29,7 +29,8 @@ internal static class SoftUi
         object content,
         string primaryText,
         string closeText = "取消",
-        ContentDialogButton defaultButton = ContentDialogButton.Primary)
+        ContentDialogButton defaultButton = ContentDialogButton.Primary,
+        string? secondaryText = null)
     {
         StyleContent(content);
 
@@ -66,6 +67,13 @@ internal static class SoftUi
 
         if (StyleOf("SoftDialogCloseButtonStyle") is Style close)
             dialog.CloseButtonStyle = close;
+
+        if (!string.IsNullOrEmpty(secondaryText))
+        {
+            dialog.SecondaryButtonText = secondaryText;
+            if (StyleOf("SoftDialogCloseButtonStyle") is Style secondary)
+                dialog.SecondaryButtonStyle = secondary;
+        }
 
         return dialog;
     }
