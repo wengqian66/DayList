@@ -49,6 +49,9 @@ public sealed class InspirationEntry
         return builder.ToString();
     }
 
+    /// <summary>One line for the Today glance. Extra lines stay in the note and in the editor.</summary>
+    public string GlanceText() => string.Join(" ", SplitText(Text));
+
     public static bool SameList(IReadOnlyList<InspirationEntry> left, IReadOnlyList<InspirationEntry> right)
     {
         if (left.Count != right.Count)

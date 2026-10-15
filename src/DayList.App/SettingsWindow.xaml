@@ -60,7 +60,7 @@
                             <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="Obsidian 用 YYYY-MM-DD，.NET 用 yyyy-MM-dd；也可以写成 Daily/YYYY-MM-DD。" TextWrapping="Wrap" />
                             <TextBlock Style="{StaticResource SoftSettingsLabelStyle}" Text="灵感小节" />
                             <TextBox x:Name="InspirationBox" Style="{StaticResource SoftSettingsFieldStyle}" PlaceholderText="灵感" TextChanged="FieldChanged" />
-                            <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="侧栏点「灵感」，写一句再保存，记在当天笔记的这个小节（默认「灵感」）。不是待办，不进月报，也不参与生成计划。" TextWrapping="Wrap" />
+                            <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="今日任务上方会列出当天已记下的句子。点某一条，或侧栏「灵感」，可以改、删或再写一句。记在当天笔记的这个小节（默认「灵感」）。不是待办，不进已完成，不进月报，也不参与生成计划。" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
 

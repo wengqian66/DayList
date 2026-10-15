@@ -45,6 +45,18 @@ public class InspirationTests
     }
 
     [Fact]
+    public void GlanceText_JoinsExtraLinesForTheTodayCard()
+    {
+        var entry = new InspirationEntry
+        {
+            TimeLabel = "14:05",
+            Text = "给妈妈打电话\n  第二行\n"
+        };
+        Assert.Equal("给妈妈打电话 第二行", entry.GlanceText());
+        Assert.Equal("", new InspirationEntry { Text = " \n\t " }.GlanceText());
+    }
+
+    [Fact]
     public void CheckboxAndFences_AreNotInspirations()
     {
         const string original = """

@@ -245,6 +245,37 @@
                 </Grid>
             </Border>
         </DataTemplate>
+
+        <DataTemplate x:Key="InspirationGlanceTemplate" x:DataType="local:InspirationGlance">
+            <Button
+                MinWidth="0"
+                MinHeight="32"
+                Padding="2,3"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                AutomationProperties.Name="编辑灵感"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="Inspiration_Click"
+                CornerRadius="8"
+                ToolTipService.ToolTip="点开后可以修改或删除">
+                <Grid ColumnDefinitions="48,*" ColumnSpacing="8">
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Text="{x:Bind TimeLabel, Mode=OneTime}" />
+                    <TextBlock
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        FontSize="13"
+                        Foreground="{StaticResource SoftInkBrush}"
+                        Text="{x:Bind Preview, Mode=OneTime}"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap" />
+                </Grid>
+            </Button>
+        </DataTemplate>
     </Page.Resources>
 
     <Page.KeyboardAccelerators>
@@ -419,7 +450,7 @@
                         x:Name="InspirationButton"
                         Click="Inspiration_Click"
                         Style="{StaticResource SoftNavButtonStyle}"
-                        ToolTipService.ToolTip="点这里写一句再保存。记在当天笔记的「灵感」小节，不是待办，不进月报，也不参与生成计划。">
+                        ToolTipService.ToolTip="今日任务上方会列出当天已保存的灵感。点这里或点某一条，可以添加、修改或删除。不是待办，不进月报，也不参与生成计划。">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                             <FontIcon FontSize="15" Glyph="&#xEA80;" />
                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="灵感" />
@@ -688,6 +719,94 @@
                     VerticalScrollBarVisibility="Auto"
                     VerticalScrollMode="Enabled">
                     <StackPanel Padding="0,0,4,8">
+                        <Border
+                            x:Name="InspirationStrip"
+                            Margin="0,0,0,14"
+                            Background="{StaticResource SoftCardBrush}"
+                            BorderBrush="{StaticResource SoftLineBrush}"
+                            BorderThickness="1"
+                            CornerRadius="16"
+                            Visibility="Collapsed">
+                            <Grid ColumnDefinitions="5,*">
+                                <Border
+                                    Background="{StaticResource SoftAmberBrush}"
+                                    CornerRadius="16,0,0,16" />
+                                <StackPanel Grid.Column="1" Padding="12,10,12,8" Spacing="2">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                        <FontIcon
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="{StaticResource SoftAmberInkBrush}"
+                                            Glyph="&#xEA80;" />
+                                        <StackPanel
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal"
+                                            Spacing="8">
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                FontSize="15"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource SoftInkBrush}"
+                                                Text="灵感" />
+                                            <TextBlock
+                                                x:Name="InspirationStripCount"
+                                                VerticalAlignment="Center"
+                                                FontSize="12"
+                                                Foreground="{StaticResource SoftMutedInkBrush}" />
+                                        </StackPanel>
+                                        <Button
+                                            x:Name="InspirationAddButton"
+                                            Grid.Column="2"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.Name="添加灵感"
+                                            Click="Inspiration_Click"
+                                            Content="添加"
+                                            Style="{StaticResource CategoryChipStyle}"
+                                            ToolTipService.ToolTip="写一句再保存"
+                                            Visibility="Collapsed" />
+                                    </Grid>
+                                    <Grid
+                                        x:Name="InspirationEmpty"
+                                        Margin="0,2,0,4"
+                                        ColumnDefinitions="Auto,Auto"
+                                        ColumnSpacing="10"
+                                        Visibility="Collapsed">
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            FontSize="13"
+                                            Foreground="{StaticResource SoftMutedInkBrush}"
+                                            Text="还没有灵感" />
+                                        <Button
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.Name="添加灵感"
+                                            Click="Inspiration_Click"
+                                            Content="添加"
+                                            Style="{StaticResource CategoryChipStyle}"
+                                            ToolTipService.ToolTip="写一句再保存" />
+                                    </Grid>
+                                    <ScrollViewer
+                                        x:Name="InspirationGlanceHost"
+                                        MaxHeight="168"
+                                        HorizontalScrollBarVisibility="Disabled"
+                                        HorizontalScrollMode="Disabled"
+                                        VerticalScrollBarVisibility="Auto"
+                                        VerticalScrollMode="Enabled"
+                                        Visibility="Collapsed">
+                                        <ItemsControl
+                                            x:Name="InspirationGlanceList"
+                                            ItemTemplate="{StaticResource InspirationGlanceTemplate}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
                         <ItemsControl
                             x:Name="CategoryCards"
                             ItemTemplate="{StaticResource CategoryCardTemplate}">

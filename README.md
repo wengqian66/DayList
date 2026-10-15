@@ -15,14 +15,14 @@ Windows 上的每日待办。清单不另存数据库，只读写 Obsidian 库�
 
 ## 下载安装（推荐）
 
-从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.1.2。
+从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.1.3。
 
 - 自带 .NET 8 与 Windows App SDK，**无需再装 SDK 或运行时**
 - 默认装到 `Program Files\DayList`，可选桌面快捷方式
 - 首次打开后在设置里指定你的 **Obsidian 库文件夹**
 - 卸载后本机设置仍保留在 `%AppData%\DayList`（含 API Key，不会进安装包或仓库）
 
-当前版本：1.1.2。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。
+当前版本：1.1.3。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。
 
 ## 环境
 
@@ -82,9 +82,9 @@ API Key 以明文保存在本机的设置文件里，不会写进笔记。
 
 ## 灵感
 
-侧栏点「灵感」，写一句再保存。记在当天笔记的单独小节，默认 `## 灵感`，不是 `- [ ]` 任务。逐步操作见 [使用说明 · 灵感怎么用](使用说明.md#灵感怎么用)。
+打开「今日」时，任务卡片上方会列出当天已经记下的灵感。没有时显示「还没有灵感」，点「添加」写一句。点某一条，或侧栏的「灵感」，打开同一个窗口来改、删或再加。记在当天笔记的单独小节，默认 `## 灵感`，不是 `- [ ]` 任务。逐步操作见 [使用说明 · 灵感怎么用](使用说明.md#灵感怎么用)。
 
-灵感**不进入月报**，也不参与「用自然语言生成计划」。在 Obsidian 里改这一节，DayList 会重新读入。
+灵感**不进入月报**，也不参与「用自然语言生成计划」，也不会出现在「已完成」。在 Obsidian 里改这一节，DayList 会重新读入。
 
 ## 提醒
 
@@ -97,10 +97,10 @@ API Key 以明文保存在本机的设置文件里，不会写进笔记。
 本机需安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) 与 [Inno Setup 6](https://jrsoftware.org/isinfo.php)。在仓库根目录：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.1.2
+powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.1.3
 ```
 
-完成后得到 `dist\DayList-Setup-1.1.2.exe`（自包含 win-x64）。
+完成后得到 `dist\DayList-Setup-1.1.3.exe`（自包含 win-x64）。
 
 ## 测试
 
