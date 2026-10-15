@@ -58,6 +58,9 @@ public sealed partial class MainPage : Page
     private readonly Queue<TaskReminder> _dueReminders = new();
     private bool _showingReminder;
     private int _reminderDialogRetries;
+    private int _rebuildDepth;
+    private bool _rebuildQueued;
+    private bool _suspendRowRebuild;
 
     public MainPage()
     {
@@ -66,6 +69,8 @@ public sealed partial class MainPage : Page
         OverdueList.ItemsSource = _overdue;
         _rows.CollectionChanged += (_, _) =>
         {
+            if (_suspendRowRebuild)
+                return;
             RebuildList();
             UpdateStats();
             RefreshCategoryPicker();
@@ -218,9 +223,18 @@ public sealed partial class MainPage : Page
 
     private void Apply(DailyNoteSnapshot snapshot)
     {
-        _rows.Clear();
-        foreach (var task in snapshot.Tasks)
-            _rows.Add(TaskRow.From(task));
+        _suspendRowRebuild = true;
+        try
+        {
+            _rows.Clear();
+            foreach (var task in snapshot.Tasks)
+                _rows.Add(TaskRow.From(task));
+        }
+        finally
+        {
+            _suspendRowRebuild = false;
+        }
+
         ApplyInspirations(snapshot.Inspirations);
         BindReminders();
         _knownHash = snapshot.ContentHash;
@@ -234,22 +248,63 @@ public sealed partial class MainPage : Page
 
     private void RebuildList()
     {
-        IEnumerable<TaskRow> source = _rows;
-        if (_nav == MainNav.Completed)
-            source = _rows.Where(row => row.IsDone);
-
-        _cards.Clear();
-        SyncCardTemplate();
-        foreach (var group in GroupRows(source))
+        // Checkbox materialization and other handlers can re-enter while the
+        // ItemsControl is still building containers. A nested Clear/Add leaves
+        // the previous card visuals in the panel, so the same category paints
+        // once per re-entry. Finish the in-flight rebuild, then run once more.
+        if (_rebuildDepth > 0)
         {
-            var card = new CategoryCardModel(group.Key);
-            foreach (var row in group.Rows)
-                card.Tasks.Add(row);
-            card.RefreshStats();
-            _cards.Add(card);
+            _rebuildQueued = true;
+            return;
         }
 
-        SyncNavChrome();
+        _rebuildDepth++;
+        try
+        {
+            do
+            {
+                _rebuildQueued = false;
+                RebuildListCore();
+            }
+            while (_rebuildQueued);
+        }
+        finally
+        {
+            _rebuildDepth--;
+        }
+    }
+
+    private void RebuildListCore()
+    {
+        // Drop the source before mutating. ItemsControl handles Reset poorly
+        // while a nested ItemsControl is generating: old containers stay and
+        // the next Add appends another copy of the same card.
+        if (CategoryCards is not null)
+            CategoryCards.ItemsSource = null;
+
+        try
+        {
+            SyncCardTemplate();
+            _cards.Clear();
+            IEnumerable<TaskRow> source = _rows;
+            if (_nav == MainNav.Completed)
+                source = _rows.Where(row => row.IsDone);
+
+            foreach (var group in GroupRows(source))
+            {
+                var card = new CategoryCardModel(group.Key);
+                foreach (var row in group.Items)
+                    card.Tasks.Add(row);
+                card.RefreshStats();
+                _cards.Add(card);
+            }
+        }
+        finally
+        {
+            if (CategoryCards is not null && !ReferenceEquals(CategoryCards.ItemsSource, _cards))
+                CategoryCards.ItemsSource = _cards;
+            SyncNavChrome();
+        }
     }
 
     private void SyncCardTemplate()
@@ -266,32 +321,8 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private static List<(string Key, List<TaskRow> Rows)> GroupRows(IEnumerable<TaskRow> rows)
-    {
-        var groups = new List<(string Key, List<TaskRow> Rows)>();
-        var index = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var row in rows)
-        {
-            var key = DayTaskCategory.Normalize(row.Category);
-            if (!index.TryGetValue(key, out var at))
-            {
-                at = groups.Count;
-                index[key] = at;
-                groups.Add((key, new List<TaskRow>()));
-            }
-
-            groups[at].Rows.Add(row);
-        }
-
-        if (index.TryGetValue(DayTaskCategory.UncategorizedKey, out var unc) && unc != 0)
-        {
-            var item = groups[unc];
-            groups.RemoveAt(unc);
-            groups.Insert(0, item);
-        }
-
-        return groups;
-    }
+    private static List<(string Key, List<TaskRow> Items)> GroupRows(IEnumerable<TaskRow> rows) =>
+        CategoryGrouping.Group(rows, row => row.Category);
 
     private void RefreshOverdue()
     {
@@ -796,9 +827,23 @@ public sealed partial class MainPage : Page
     {
         if (Suppressed || sender is not CheckBox box || box.DataContext is not TaskRow row)
             return;
-        row.IsDone = box.IsChecked == true;
+
+        var done = box.IsChecked == true;
+        // Opening 已完成 builds one card, then each already-checked box raises
+        // Checked as the template binds IsChecked. Rebuilding there used to run
+        // once per done task and the ItemsControl appended a copy each time
+        // (two done tasks → the same category card three times).
+        if (!TaskCheckInteraction.DoneFlagChanged(row.IsDone, done))
+            return;
+
+        row.IsDone = done;
         if (_nav == MainNav.Completed)
-            RebuildList();
+        {
+            // After this handler returns. Rebuilding now would detach the
+            // checkbox that is still raising Checked/Unchecked.
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, RebuildList);
+        }
+
         UpdateStats();
         if (_pendingExternal)
             return;
