@@ -20,6 +20,44 @@ public class ReminderStoreTests
     }
 
     [Fact]
+    public void Wheel_CentersFirstLastAndMiddle()
+    {
+        var view = ReminderWheelLayout.BandHeight;
+        Assert.Equal(ReminderWheelLayout.ItemHeight * ReminderWheelLayout.VisibleRows, view);
+        Assert.Equal(28, ReminderWheelLayout.SlotCount(24));
+
+        Assert.Equal(0, ReminderWheelLayout.OffsetForValue(0, view, ReminderWheelLayout.Extent(24), 24));
+        Assert.Equal(0, ReminderWheelLayout.ValueAtOffset(0, view, 24));
+
+        var last = ReminderWheelLayout.OffsetForValue(23, view, ReminderWheelLayout.Extent(24), 24);
+        Assert.Equal(23, ReminderWheelLayout.ValueAtOffset(last, view, 24));
+
+        var minute = ReminderWheelLayout.OffsetForValue(30, view, ReminderWheelLayout.Extent(60), 60);
+        Assert.Equal(30, ReminderWheelLayout.ValueAtOffset(minute, view, 60));
+    }
+
+    [Fact]
+    public void Wheel_RoundsToNearestValue()
+    {
+        var view = ReminderWheelLayout.BandHeight;
+        var extent = ReminderWheelLayout.Extent(24);
+        var offset = ReminderWheelLayout.OffsetForValue(10, view, extent, 24);
+        Assert.Equal(10, ReminderWheelLayout.ValueAtOffset(offset, view, 24));
+        Assert.Equal(10, ReminderWheelLayout.ValueAtOffset(offset + ReminderWheelLayout.ItemHeight / 2 - 1, view, 24));
+        Assert.Equal(11, ReminderWheelLayout.ValueAtOffset(offset + ReminderWheelLayout.ItemHeight / 2, view, 24));
+    }
+
+    [Fact]
+    public void SuggestTime_KeepsExistingAndSkipsPastMinutesToday()
+    {
+        var now = new DateTime(2026, 10, 15, 14, 30, 20);
+        Assert.Equal(new TimeOnly(9, 5), ReminderSchedule.SuggestTime(Day, now, "9:05"));
+        Assert.Equal(new TimeOnly(14, 31), ReminderSchedule.SuggestTime(Day, now, null));
+        Assert.Equal(new TimeOnly(9, 0), ReminderSchedule.SuggestTime(Day.AddDays(1), now, ""));
+        Assert.Equal(new TimeOnly(23, 59), ReminderSchedule.SuggestTime(Day, new DateTime(2026, 10, 15, 23, 59, 40), "nope"));
+    }
+
+    [Fact]
     public void Store_RoundTripsWithoutTouchingMarkdown()
     {
         var directory = Path.Combine(Path.GetTempPath(), "daylist-reminders-" + Guid.NewGuid().ToString("N"));

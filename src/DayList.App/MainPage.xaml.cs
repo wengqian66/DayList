@@ -2028,8 +2028,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        var box = SoftUi.CreateDialogTextBox("例如 14:30");
-        box.Text = row.ReminderTime ?? "";
+        var wheels = new ReminderTimeWheels(ReminderSchedule.SuggestTime(_date, DateTime.Now, row.ReminderTime));
         var error = new TextBlock
         {
             FontSize = 12,
@@ -2037,8 +2036,8 @@ public sealed partial class MainPage : Page
             Foreground = new SolidColorBrush(Color.FromArgb(255, 0xB3, 0x3A, 0x3A))
         };
         var panel = new StackPanel { Spacing = 8, MaxWidth = 380 };
-        panel.Children.Add(SoftUi.CreateDialogBody("填这一天的时间，例如 14:30，再点保存。到点会弹出提醒。需要 DayList 开着或在托盘里；退出后不会响，也不会改笔记里的任务。"));
-        panel.Children.Add(box);
+        panel.Children.Add(SoftUi.CreateDialogBody("上下滚动选择小时和分钟，再点保存。到点会弹出提醒。需要 DayList 开着或在托盘里；退出后不会响，也不会改笔记里的任务。"));
+        panel.Children.Add(wheels);
         panel.Children.Add(error);
 
         var dialog = SoftUi.CreateDialog(
@@ -2049,16 +2048,10 @@ public sealed partial class MainPage : Page
             "取消",
             ContentDialogButton.Primary,
             string.IsNullOrEmpty(row.ReminderId) ? null : "清除");
+        dialog.Opened += (_, _) => wheels.FocusHour();
         dialog.PrimaryButtonClick += (_, args) =>
         {
-            if (!ReminderSchedule.TryParseClock(box.Text, out var time))
-            {
-                args.Cancel = true;
-                error.Text = "用 24 小时制，例如 09:30 或 14:05。";
-                return;
-            }
-
-            if (_date.ToDateTime(time) <= DateTime.Now)
+            if (_date.ToDateTime(wheels.Time) <= DateTime.Now)
             {
                 args.Cancel = true;
                 error.Text = "这个时间已经过了。";
@@ -2078,9 +2071,7 @@ public sealed partial class MainPage : Page
                 return;
             }
 
-            if (!ReminderSchedule.TryParseClock(box.Text, out var time))
-                return;
-
+            var time = wheels.Time;
             var saved = ReminderStore.SetForTask(
                 ReminderStore.DefaultPath,
                 row.ReminderId,
