@@ -1,4 +1,4 @@
-bin/
+﻿bin/
 obj/
 .vs/
 *.user
@@ -6,3 +6,5 @@ obj/
 TestResults/
 .idea/
 *.DotSettings.user
+artifacts/
+dist/

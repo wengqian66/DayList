@@ -13,12 +13,23 @@ Windows 上的每日待办。清单不另存数据库，只读写 Obsidian 库�
 
 小节以外的正文会原样保留。小节里不是任务的段落也会保留。在 Obsidian 里改同一份文件时，DayList 会重新读入；正在输入时不会抢走光标，信息条上可以载入外部版本，关掉提示则会在离开输入框时写回你的修改。
 
+## 下载安装（推荐）
+
+从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载 **DayList-Setup-1.0.0.exe**，双击安装即可。
+
+- 自带 .NET 8 与 Windows App SDK，**无需再装 SDK 或运行时**
+- 默认装到 `Program Files\DayList`，可选桌面快捷方式
+- 首次打开后在设置里指定你的 **Obsidian 库文件夹**
+- 卸载后本机设置仍保留在 `%AppData%\DayList`（含 API Key，不会进安装包或仓库）
+
+当前版本：[v1.0.0](https://github.com/wengqian66/DayList/releases/tag/v1.0.0)
+
 ## 环境
 
 - Windows 10 版本 1809 或更新，x64
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
-不需要安装包。生成结果会带上 Windows App SDK 运行时，所以不用再单独装一份。用 `dotnet run` 时，.NET 运行时用本机 SDK 里的即可。如果要直接双击 exe，还需要安装 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) x64。
+普通用户请直接用上面的安装包。从源码编译时：发布结果可自带 Windows App SDK 运行时；用 `dotnet run` 时 .NET 运行时用本机 SDK 即可。若只双击未自包含的 exe，还需 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) x64。
 
 这个界面是 WinUI 3，只能在 Windows 上编译和运行。读写笔记的逻辑在 `DayList.Core`，可以在别的系统上跑测试。
 
@@ -66,6 +77,16 @@ src\DayList.App\bin\Release\net8.0-windows10.0.19041.0\win-x64\DayList.exe
 没填接口时，按钮会说明还缺什么，不会发请求。这个月没有 DayList 内容时，也不会发请求。已经有同名月报时，会先问要不要覆盖。
 
 API Key 以明文保存在本机的设置文件里，不会写进笔记。
+
+## 打包安装程序
+
+本机需安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) 与 [Inno Setup 6](https://jrsoftware.org/isinfo.php)。在仓库根目录：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.0.0
+```
+
+完成后得到 `dist\DayList-Setup-1.0.0.exe`（自包含 win-x64）。
 
 ## 测试
 
