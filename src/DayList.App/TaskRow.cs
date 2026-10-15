@@ -350,6 +350,20 @@ public sealed class CategoryHeaderRow
     public string Title => DayTaskCategory.Display(Category);
 }
 
+/// <summary>One saved inspiration, as shown on the Today card. Editing stays in the dialog.</summary>
+public sealed class InspirationGlance
+{
+    public InspirationGlance(InspirationEntry entry)
+    {
+        TimeLabel = string.IsNullOrEmpty(entry.TimeLabel) ? "·" : entry.TimeLabel;
+        Preview = entry.GlanceText();
+    }
+
+    public string TimeLabel { get; }
+
+    public string Preview { get; }
+}
+
 public sealed class OverdueRow
 {
     public OverdueRow(OverdueTaskItem item)

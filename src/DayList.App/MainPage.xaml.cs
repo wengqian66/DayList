@@ -52,6 +52,7 @@ public sealed partial class MainPage : Page
     private int _statusDismissToken;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _statusTimer;
     private readonly List<InspirationEntry> _inspirations = new();
+    private readonly ObservableCollection<InspirationGlance> _inspirationGlance = new();
     private bool _inspirationDialogOpen;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _reminderTimer;
     private readonly HashSet<string> _reminderInflight = new(StringComparer.Ordinal);
@@ -648,6 +649,8 @@ public sealed partial class MainPage : Page
         var clear = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
         NavTodayButton.Background = _nav == MainNav.Today ? selected : clear;
         NavDoneButton.Background = _nav == MainNav.Completed ? selected : clear;
+        if (InspirationStrip is not null)
+            InspirationStrip.Visibility = _nav == MainNav.Today ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void NewTaskInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -2358,6 +2361,41 @@ public sealed partial class MainPage : Page
         NavInspirationCount.Text = _inspirations.Count == 0
             ? ""
             : _inspirations.Count.ToString(CultureInfo.InvariantCulture);
+        RefreshInspirationGlance();
+    }
+
+    private void RefreshInspirationGlance()
+    {
+        if (InspirationGlanceList is not null)
+            InspirationGlanceList.ItemsSource = null;
+
+        _inspirationGlance.Clear();
+        foreach (var entry in _inspirations)
+        {
+            var glance = new InspirationGlance(entry);
+            if (glance.Preview.Length == 0)
+                continue;
+            _inspirationGlance.Add(glance);
+        }
+
+        if (InspirationGlanceList is not null)
+            InspirationGlanceList.ItemsSource = _inspirationGlance;
+
+        var count = _inspirationGlance.Count;
+        if (InspirationStripCount is not null)
+        {
+            InspirationStripCount.Text = count == 0
+                ? ""
+                : count.ToString(CultureInfo.InvariantCulture);
+        }
+
+        var hasItems = count > 0;
+        if (InspirationEmpty is not null)
+            InspirationEmpty.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
+        if (InspirationAddButton is not null)
+            InspirationAddButton.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        if (InspirationGlanceHost is not null)
+            InspirationGlanceHost.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void BindReminders()
