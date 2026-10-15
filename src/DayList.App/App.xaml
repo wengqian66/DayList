@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Application
+    x:Class="DayList.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <Color x:Key="SoftCreamColor">#FFF7F2EA</Color>
+            <Color x:Key="SoftCreamDeepColor">#FFF0E8DC</Color>
+            <Color x:Key="SoftCardColor">#FFFFFBF6</Color>
+            <Color x:Key="SoftInkColor">#FF3D3429</Color>
+            <Color x:Key="SoftMutedInkColor">#FF7A6F62</Color>
+            <Color x:Key="SoftLineColor">#FFE4D8C8</Color>
+            <Color x:Key="SoftAmberColor">#FFF3E0C4</Color>
+            <Color x:Key="SoftAmberInkColor">#FF8A5A20</Color>
+            <Color x:Key="SoftNavSelectedColor">#FFE7D9C4</Color>
+
+            <SolidColorBrush x:Key="SoftCreamBrush" Color="{StaticResource SoftCreamColor}" />
+            <SolidColorBrush x:Key="SoftCreamDeepBrush" Color="{StaticResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="SoftCardBrush" Color="{StaticResource SoftCardColor}" />
+            <SolidColorBrush x:Key="SoftInkBrush" Color="{StaticResource SoftInkColor}" />
+            <SolidColorBrush x:Key="SoftMutedInkBrush" Color="{StaticResource SoftMutedInkColor}" />
+            <SolidColorBrush x:Key="SoftLineBrush" Color="{StaticResource SoftLineColor}" />
+            <SolidColorBrush x:Key="SoftAmberBrush" Color="{StaticResource SoftAmberColor}" />
+            <SolidColorBrush x:Key="SoftAmberInkBrush" Color="{StaticResource SoftAmberInkColor}" />
+            <SolidColorBrush x:Key="SoftNavSelectedBrush" Color="{StaticResource SoftNavSelectedColor}" />
+
+            <CornerRadius x:Key="CardCornerRadius">16</CornerRadius>
+            <CornerRadius x:Key="PillCornerRadius">22</CornerRadius>
+
+            <Style x:Key="QuietButtonStyle" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="CornerRadius" Value="10" />
+            </Style>
+
+            <Style x:Key="SoftIconButtonStyle" TargetType="Button" BasedOn="{StaticResource QuietButtonStyle}">
+                <Setter Property="Foreground" Value="{StaticResource SoftMutedInkBrush}" />
+            </Style>
+
+            <Style x:Key="TaskTextStyle" TargetType="TextBox">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="4,6" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="MinHeight" Value="34" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+            </Style>
+
+            <Style x:Key="CategoryChipStyle" TargetType="Button">
+                <Setter Property="Background" Value="#F0E8DCC8" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="8,2" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="24" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Foreground" Value="{StaticResource SoftMutedInkBrush}" />
+            </Style>
+
+            <Style x:Key="SoftCategoryCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource SoftCardBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0,0,0,14" />
+            </Style>
+
+            <Style x:Key="SoftNavButtonStyle" TargetType="Button">
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="12,11" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="MinHeight" Value="40" />
+            </Style>
+
+
+            <Style x:Key="QuietSectionTitleBoxStyle" TargetType="TextBox">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="2,1" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="MinHeight" Value="22" />
+                <Setter Property="MinWidth" Value="48" />
+                <Setter Property="MaxWidth" Value="160" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="SelectionHighlightColor" Value="#665B9BD5" />
+            </Style>
+            <Style x:Key="SoftSettingsCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource SoftCardBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="16,14" />
+            </Style>
+            <Style x:Key="SoftSettingsSectionTitleStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+            </Style>
+            <Style x:Key="SoftSettingsLabelStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+            </Style>
+            <Style x:Key="SoftSettingsFieldStyle" TargetType="TextBox">
+                <Setter Property="Background" Value="#F2FFFBF6" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="Padding" Value="10,8" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+            </Style>
+
+            <!-- Soft overlays: dialogs, flyouts, calendar, infobars -->
+            <SolidColorBrush x:Key="SoftDialogScrimBrush" Color="#66000000" />
+            <SolidColorBrush x:Key="SoftAccentBrush" Color="#FF5B9BD5" />
+            <SolidColorBrush x:Key="SoftCalendarChromeBrush" Color="#FFE0D2C0" />
+            <SolidColorBrush x:Key="SoftCalendarDayBrush" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="SoftInfoBarSuccessBrush" Color="#FFE5F0D8" />
+            <SolidColorBrush x:Key="SoftInfoBarWarningBrush" Color="#FFF3E0C4" />
+            <SolidColorBrush x:Key="SoftInfoBarErrorBrush" Color="#FFF3D6D2" />
+            <SolidColorBrush x:Key="SoftInfoBarInformationalBrush" Color="#FFE0EAF4" />
+
+            <Style x:Key="SoftDialogPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="MinWidth" Value="96" />
+                <Setter Property="Padding" Value="14,8" />
+            </Style>
+            <Style x:Key="SoftDialogCloseButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Background" Value="{StaticResource SoftCreamDeepBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="MinWidth" Value="88" />
+                <Setter Property="Padding" Value="14,8" />
+            </Style>
+
+            <Style x:Key="SoftContentDialogStyle" TargetType="ContentDialog" BasedOn="{StaticResource DefaultContentDialogStyle}">
+                <Setter Property="Background" Value="{StaticResource SoftCreamBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="RequestedTheme" Value="Light" />
+            </Style>
+            <Style TargetType="ContentDialog" BasedOn="{StaticResource SoftContentDialogStyle}" />
+
+            <Style x:Key="SoftFlyoutPresenterStyle" TargetType="FlyoutPresenter">
+                <Setter Property="Background" Value="{StaticResource SoftCalendarChromeBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="10" />
+                <Setter Property="RequestedTheme" Value="Light" />
+            </Style>
+
+            <Style x:Key="SoftMenuFlyoutPresenterStyle" TargetType="MenuFlyoutPresenter">
+                <Setter Property="Background" Value="{StaticResource SoftCreamBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="4" />
+                <Setter Property="RequestedTheme" Value="Light" />
+            </Style>
+
+            <Style x:Key="SoftCalendarViewStyle" TargetType="CalendarView">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="OutOfScopeForeground" Value="{StaticResource SoftMutedInkBrush}" />
+                <Setter Property="CalendarItemForeground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="CalendarItemBackground" Value="Transparent" />
+                <Setter Property="CalendarItemBorderBrush" Value="Transparent" />
+                <Setter Property="SelectedBorderBrush" Value="{StaticResource SoftAccentBrush}" />
+                <Setter Property="SelectedHoverBorderBrush" Value="{StaticResource SoftAccentBrush}" />
+                <Setter Property="SelectedPressedBorderBrush" Value="{StaticResource SoftAccentBrush}" />
+                <Setter Property="TodayForeground" Value="{StaticResource SoftAccentBrush}" />
+                <Setter Property="HoverBorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="PressedBorderBrush" Value="{StaticResource SoftAccentBrush}" />
+                <Setter Property="DayItemFontSize" Value="13" />
+                <Setter Property="MonthYearItemFontSize" Value="13" />
+                <Setter Property="FirstDayOfWeek" Value="Monday" />
+                <Setter Property="RequestedTheme" Value="Light" />
+            </Style>
+
+            <Style x:Key="SoftInfoBarStyle" TargetType="InfoBar">
+                <Setter Property="Background" Value="{StaticResource SoftCardBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="RequestedTheme" Value="Light" />
+            </Style>
+            <Style TargetType="InfoBar" BasedOn="{StaticResource SoftInfoBarStyle}" />
+
+            <Style x:Key="SoftPasswordBoxStyle" TargetType="PasswordBox">
+                <Setter Property="Background" Value="#F2FFFBF6" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="Padding" Value="10,8" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+            </Style>
+
+
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackground" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundFocused" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="MenuFlyoutItemForeground" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPointerOver" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPressed" Color="#FF3D3429" />
+
+            <!-- Force ComboBox popup off acrylic white -->
+            <SolidColorBrush x:Key="AcrylicInAppFillColorDefaultBrush" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="AcrylicBackgroundFillColorDefaultBrush" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerOver" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerPressed" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="ComboBoxDropDownForeground" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemBackground" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#FFE8DCC8" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedUnfocused" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="ComboBoxItemForeground" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedUnfocused" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemPillFillBrush" Color="#FF5B9BD5" />
+
+            <Style x:Key="SoftComboBoxItemStyle" TargetType="ComboBoxItem" BasedOn="{StaticResource DefaultComboBoxItemStyle}">
+                <Setter Property="Background" Value="{StaticResource SoftCreamBrush}" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="CornerRadius" Value="8" />
+                <Setter Property="Margin" Value="2,1" />
+                <Setter Property="Padding" Value="10,8" />
+                <Setter Property="RequestedTheme" Value="Light" />
+            </Style>
+
+            <Style x:Key="SoftComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
+                <Setter Property="Background" Value="{StaticResource SoftCreamBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="RequestedTheme" Value="Light" />
+                <Setter Property="ItemContainerStyle" Value="{StaticResource SoftComboBoxItemStyle}" />
+            </Style>
+
+
+            <SolidColorBrush x:Key="SoftPinCheckedBrush" Color="#FFE8DCC8" />
+            <SolidColorBrush x:Key="SoftPinCheckedBorderBrush" Color="#FFC4B09A" />
+            <SolidColorBrush x:Key="SoftPinCheckedForegroundBrush" Color="#FF6B5344" />
+
+            <Style x:Key="SoftPinToggleStyle" TargetType="ToggleButton">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="36" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="Foreground" Value="{StaticResource SoftMutedInkBrush}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="Root"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="{TemplateBinding CornerRadius}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <VisualStateManager.VisualStateGroups>
+                                    <VisualStateGroup x:Name="CommonStates">
+                                        <VisualState x:Name="Normal" />
+                                        <VisualState x:Name="PointerOver">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{StaticResource SoftCreamDeepBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Pressed">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{StaticResource SoftPinCheckedBrush}" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Disabled">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Opacity" Value="0.4" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                    </VisualStateGroup>
+                                    <VisualStateGroup x:Name="CheckStates">
+                                        <VisualState x:Name="Unchecked" />
+                                        <VisualState x:Name="Checked">
+                                            <VisualState.Setters>
+                                                <Setter Target="Root.Background" Value="{StaticResource SoftPinCheckedBrush}" />
+                                                <Setter Target="Root.BorderBrush" Value="{StaticResource SoftPinCheckedBorderBrush}" />
+                                                <Setter Target="Root.BorderThickness" Value="1" />
+                                                <Setter Target="Root.Opacity" Value="1" />
+                                            </VisualState.Setters>
+                                        </VisualState>
+                                        <VisualState x:Name="Indeterminate" />
+                                    </VisualStateGroup>
+                                </VisualStateManager.VisualStateGroups>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="SoftPillComposerStyle" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource SoftCardBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="24" />
+                <Setter Property="Padding" Value="14,8" />
+            </Style>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

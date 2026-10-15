@@ -1,0 +1,698 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="DayList.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DayList"
+    Background="{StaticResource SoftCreamBrush}"
+    RequestedTheme="Light"
+    UseLayoutRounding="True">
+    <Page.Resources>
+        <DataTemplate x:Key="TaskItemTemplate" x:DataType="local:TaskRow">
+            <Grid
+                Padding="4,3"
+                AllowDrop="True"
+                ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto"
+                ColumnSpacing="6"
+                MinHeight="36"
+                DragOver="TaskRow_DragOver"
+                Drop="TaskRow_Drop"
+                PointerEntered="TaskRow_PointerEntered"
+                PointerExited="TaskRow_PointerExited">
+                <Border
+                    Width="18"
+                    Height="32"
+                    VerticalAlignment="Center"
+                    Background="Transparent"
+                    CanDrag="True"
+                    DragStarting="DragHandle_DragStarting"
+                    ToolTipService.ToolTip="拖动手柄：上下排序，或拖到分类标题改分类">
+                    <FontIcon
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="11"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Glyph="&#xE784;" />
+                </Border>
+                <CheckBox
+                    Grid.Column="1"
+                    MinWidth="28"
+                    VerticalAlignment="Center"
+                    Checked="TaskDoneChanged"
+                    Foreground="{StaticResource SoftInkBrush}"
+                    IsChecked="{x:Bind IsDone, Mode=OneWay}"
+                    Unchecked="TaskDoneChanged" />
+                <Border Grid.Column="2" Width="{x:Bind IndentWidth, Mode=OneWay}" />
+                <TextBox
+                    Grid.Column="3"
+                    GotFocus="TaskText_GotFocus"
+                    KeyDown="TaskText_KeyDown"
+                    KeyUp="TaskText_KeyUp"
+                    LostFocus="TaskText_LostFocus"
+                    Opacity="{x:Bind TextOpacity, Mode=OneWay}"
+                    Style="{StaticResource TaskTextStyle}"
+                    Text="{x:Bind Text, Mode=TwoWay}"
+                    TextWrapping="NoWrap" />
+                <Button
+                    Grid.Column="4"
+                    MaxWidth="96"
+                    VerticalAlignment="Center"
+                    Click="CategoryChip_Click"
+                    Content="{x:Bind CategoryLabel, Mode=OneWay}"
+                    Style="{StaticResource CategoryChipStyle}"
+                    ToolTipService.ToolTip="更改分类" />
+                <Button
+                    Grid.Column="5"
+                    AutomationProperties.Name="删除任务"
+                    Click="Delete_Click"
+                    Opacity="0.28"
+                    Style="{StaticResource QuietButtonStyle}"
+                    Tag="delete">
+                    <FontIcon FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE711;" />
+                </Button>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="CategoryCardTemplate" x:DataType="local:CategoryCardModel">
+            <Border
+                Margin="0,0,0,14"
+                AllowDrop="True"
+                Background="{x:Bind CardFillBrush, Mode=OneTime}"
+                BorderBrush="{x:Bind SoftAccentBrush, Mode=OneTime}"
+                BorderThickness="1"
+                CornerRadius="16"
+                DragOver="Header_DragOver"
+                Drop="Header_Drop"
+                ToolTipService.ToolTip="拖到卡片上可改分类">
+                <Grid ColumnDefinitions="5,*">
+                    <!-- Left accent bar -->
+                    <Border
+                        Background="{x:Bind AccentBrush, Mode=OneTime}"
+                        CornerRadius="16,0,0,16" />
+                    <Grid Grid.Column="1" Padding="0,0,0,6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <!-- Tinted header wash -->
+                        <Border
+                            Padding="14,12,14,10"
+                            Background="{x:Bind HeaderWashBrush, Mode=OneTime}"
+                            CornerRadius="0,16,0,0">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                                <Border
+                                    Width="34"
+                                    Height="34"
+                                    Background="{StaticResource SoftCardBrush}"
+                                    CornerRadius="10"
+                                    VerticalAlignment="Center">
+                                    <FontIcon
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        FontSize="15"
+                                        Foreground="{x:Bind AccentBrush, Mode=OneTime}"
+                                        Glyph="{x:Bind Glyph, Mode=OneTime}" />
+                                </Border>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource SoftInkBrush}"
+                                    Text="{x:Bind Title, Mode=OneTime}"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    Foreground="{StaticResource SoftMutedInkBrush}"
+                                    Text="{x:Bind FractionText, Mode=OneWay}" />
+                                <Grid
+                                    Grid.Column="3"
+                                    Width="40"
+                                    Height="40"
+                                    VerticalAlignment="Center">
+                                    <ProgressRing
+                                        Width="36"
+                                        Height="36"
+                                        Foreground="{x:Bind AccentBrush, Mode=OneTime}"
+                                        IsIndeterminate="False"
+                                        Maximum="1"
+                                        Minimum="0"
+                                        Value="{x:Bind ProgressValue, Mode=OneWay}" />
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        FontSize="10"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource SoftInkBrush}"
+                                        Text="{x:Bind ProgressLabel, Mode=OneWay}" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border
+                            Grid.Row="1"
+                            Padding="10,4,10,8"
+                            Background="#CCFFFBF6"
+                            CornerRadius="0,0,16,0">
+                            <ItemsControl
+                                ItemTemplate="{StaticResource TaskItemTemplate}"
+                                ItemsSource="{x:Bind Tasks, Mode=OneWay}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Page.KeyboardAccelerators>
+        <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="NewTaskInvoked" />
+    </Page.KeyboardAccelerators>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="252" MinWidth="240" MaxWidth="280" />
+            <ColumnDefinition Width="*" MinWidth="420" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar: date + horizontal progress like mock -->
+        <Border
+            Grid.Column="0"
+            Background="{StaticResource SoftCreamDeepBrush}"
+            BorderBrush="{StaticResource SoftLineBrush}"
+            BorderThickness="0,0,1,0"
+            Padding="18,16,16,18">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <StackPanel Spacing="4">
+                    <TextBlock
+                        x:Name="SideDateText"
+                        FontSize="26"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource SoftInkBrush}"
+                        Text="10月15日 周四"
+                        TextWrapping="WrapWholeWords" />
+                    <TextBlock
+                        x:Name="SideWeekText"
+                        FontSize="14"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Visibility="Collapsed"
+                        Text="" />
+                    <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontSize="14" Foreground="#E8A06F" Glyph="&#xE706;" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource SoftInkBrush}"
+                            Text="DayList" />
+                    </StackPanel>
+                    <StackPanel Margin="0,2,0,0" Orientation="Horizontal" Spacing="0">
+                        <TextBlock
+                            x:Name="PathText"
+                            MaxWidth="148"
+                            FontSize="11"
+                            Foreground="{StaticResource SoftMutedInkBrush}"
+                            Text="还没有连接库"
+                            TextTrimming="CharacterEllipsis"
+                            TextWrapping="NoWrap" />
+                        <TextBlock
+                            x:Name="SectionPrefix"
+                            FontSize="11"
+                            Foreground="{StaticResource SoftMutedInkBrush}"
+                            Text=" · "
+                            Visibility="Collapsed" />
+                        <Border
+                            x:Name="SectionTitleChrome"
+                            Padding="4,1"
+                            Background="Transparent"
+                            CornerRadius="6"
+                            Visibility="Collapsed"
+                            PointerEntered="SectionTitleChrome_PointerEntered"
+                            PointerExited="SectionTitleChrome_PointerExited"
+                            Tapped="SectionTitle_Tapped"
+                            ToolTipService.ToolTip="点击修改小节标题">
+                            <Grid>
+                                <TextBlock
+                                    x:Name="SectionTitleText"
+                                    FontSize="11"
+                                    Foreground="{StaticResource SoftMutedInkBrush}"
+                                    Text="DayList"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBox
+                                    x:Name="SectionTitleBox"
+                                    Style="{StaticResource QuietSectionTitleBoxStyle}"
+                                    Visibility="Collapsed"
+                                    KeyDown="SectionTitleBox_KeyDown"
+                                    LostFocus="SectionTitleBox_LostFocus" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Progress: ring + labels side by side (mock) -->
+                    <Grid Margin="0,18,0,4" ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                        <Grid Width="72" Height="72">
+                            <ProgressRing
+                                x:Name="SideProgressRing"
+                                Width="68"
+                                Height="68"
+                                Foreground="#5B9BD5"
+                                IsIndeterminate="False"
+                                Maximum="1"
+                                Minimum="0"
+                                Value="0" />
+                            <TextBlock
+                                x:Name="SideProgressPercent"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontSize="18"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SoftInkBrush}"
+                                Text="0%" />
+                        </Grid>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock
+                                FontSize="13"
+                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                Text="今日进度" />
+                            <TextBlock
+                                x:Name="StatsText"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SoftInkBrush}"
+                                Text="0 / 0 完成"
+                                TextWrapping="WrapWholeWords" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Margin="0,12,0,0" Spacing="4">
+                    <Button
+                        x:Name="NavTodayButton"
+                        Click="NavToday_Click"
+                        Style="{StaticResource SoftNavButtonStyle}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                            <FontIcon FontSize="15" Glyph="&#xE787;" />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="今日" />
+                            <Border
+                                Grid.Column="2"
+                                MinWidth="22"
+                                Padding="6,2"
+                                Background="#33A89070"
+                                CornerRadius="10"
+                                VerticalAlignment="Center">
+                                <TextBlock
+                                    x:Name="NavTodayCount"
+                                    HorizontalAlignment="Center"
+                                    FontSize="11"
+                                    Foreground="{StaticResource SoftMutedInkBrush}"
+                                    Text="" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                    <Button
+                        x:Name="NavDoneButton"
+                        Click="NavDone_Click"
+                        Style="{StaticResource SoftNavButtonStyle}">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                            <FontIcon FontSize="15" Glyph="&#xE73E;" />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="已完成" />
+                            <Border
+                                Grid.Column="2"
+                                MinWidth="22"
+                                Padding="6,2"
+                                Background="#33A89070"
+                                CornerRadius="10"
+                                VerticalAlignment="Center">
+                                <TextBlock
+                                    x:Name="NavDoneCount"
+                                    HorizontalAlignment="Center"
+                                    FontSize="11"
+                                    Foreground="{StaticResource SoftMutedInkBrush}"
+                                    Text="" />
+                            </Border>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+
+                                <StackPanel Grid.Row="2" Margin="0,8,0,0" Spacing="4">
+                    <Grid>
+                        <Button
+                            x:Name="ReportSidebarButton"
+                            HorizontalAlignment="Stretch"
+                            Click="Report_Click"
+                            Style="{StaticResource SoftNavButtonStyle}"
+                            ToolTipService.ToolTip="汇总本月每日待办，生成 Markdown 月报到 Reports">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <FontIcon x:Name="ReportSidebarIcon" FontSize="15" Glyph="&#xE9D2;" />
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="AI 本月总结" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                <ProgressRing
+                                    x:Name="ReportRing"
+                                    Grid.Column="2"
+                                    Width="16"
+                                    Height="16"
+                                    IsActive="False"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Button>
+                    </Grid>
+                    <Button
+                        x:Name="PlanSidebarButton"
+                        HorizontalAlignment="Stretch"
+                        Click="Plan_Click"
+                        Style="{StaticResource SoftNavButtonStyle}"
+                        ToolTipService.ToolTip="用自然语言生成计划">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <FontIcon FontSize="15" Glyph="&#xE9F5;" />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="AI 生成计划" />
+                        </Grid>
+                    </Button>
+                    <Button
+                        x:Name="SidebarPickButton"
+                        HorizontalAlignment="Stretch"
+                        Click="Settings_Click"
+                        Style="{StaticResource SoftNavButtonStyle}">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <FontIcon FontSize="15" Glyph="&#xE713;" />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="设置" />
+                        </Grid>
+                    </Button>
+                </StackPanel>
+</Grid>
+        </Border>
+
+        <!-- Main pane -->
+        <Grid
+            Grid.Column="1"
+            Padding="22,14,22,16"
+            RowDefinitions="Auto,Auto,*,Auto"
+            RowSpacing="10">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="2">
+                <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
+                    <TextBlock
+                        x:Name="GreetingText"
+                        MaxWidth="280"
+                        VerticalAlignment="Center"
+                        FontSize="15"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Text="今天也是充实的一天。"
+                        TextTrimming="CharacterEllipsis" />
+                    <Button
+                        x:Name="PrevDayButton"
+                        Width="30"
+                        Height="30"
+                        AutomationProperties.Name="前一天"
+                        Click="Prev_Click"
+                        Style="{StaticResource QuietButtonStyle}"
+                        ToolTipService.ToolTip="前一天">
+                        <FontIcon FontSize="11" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE76B;" />
+                    </Button>
+                    <Button
+                        x:Name="DateButton"
+                        Height="32"
+                        MinWidth="0"
+                        Padding="8,0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        CornerRadius="10">
+                        <Button.Content>
+                            <TextBlock
+                                x:Name="DateLabel"
+                                VerticalAlignment="Center"
+                                FontSize="13"
+                                Foreground="{StaticResource SoftInkBrush}"
+                                TextTrimming="CharacterEllipsis" />
+                        </Button.Content>
+                        <Button.Flyout>
+                            <Flyout Placement="Bottom" FlyoutPresenterStyle="{StaticResource SoftFlyoutPresenterStyle}">
+                                <!-- Dark chrome from SoftFlyoutPresenterStyle; light panel only under date grid -->
+                                <Grid Width="320" Height="340">
+                                    <Border
+                                        Margin="4,88,4,4"
+                                        Background="{StaticResource SoftCalendarDayBrush}"
+                                        CornerRadius="8" />
+                                    <CalendarView
+                                        x:Name="DayCalendar"
+                                        Width="320"
+                                        Height="340"
+                                        Style="{StaticResource SoftCalendarViewStyle}"
+                                        CalendarIdentifier="GregorianCalendar"
+                                        IsTodayHighlighted="True"
+                                        Language="zh-Hans-CN"
+                                        SelectedDatesChanged="DayCalendar_SelectedDatesChanged"
+                                        SelectionMode="Single" />
+                                </Grid>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button
+                        x:Name="NextDayButton"
+                        Width="30"
+                        Height="30"
+                        AutomationProperties.Name="后一天"
+                        Click="Next_Click"
+                        Style="{StaticResource QuietButtonStyle}"
+                        ToolTipService.ToolTip="后一天">
+                        <FontIcon FontSize="11" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE76C;" />
+                    </Button>
+                    <Button
+                        x:Name="TodayButton"
+                        Height="28"
+                        Padding="10,0"
+                        Click="Today_Click"
+                        Content="今天"
+                        Visibility="Collapsed" />
+                </StackPanel>
+                <ToggleButton
+                    x:Name="PinButton"
+                    Grid.Column="1"
+                    AutomationProperties.Name="置顶窗口"
+                    Style="{StaticResource SoftPinToggleStyle}"
+                    Click="Pin_Click"
+                    ToolTipService.ToolTip="窗口置顶">
+                    <FontIcon
+                        x:Name="PinIcon"
+                        FontSize="16"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Glyph="&#xE840;" />
+                </ToggleButton>
+                <Button
+                    x:Name="ObsidianButton"
+                    Grid.Column="2"
+                    AutomationProperties.Name="在 Obsidian 中打开"
+                    Click="Obsidian_Click"
+                    IsEnabled="False"
+                    Style="{StaticResource SoftIconButtonStyle}"
+                    ToolTipService.ToolTip="在 Obsidian 中打开今日笔记">
+                    <FontIcon FontSize="16" Glyph="&#xE8A7;" />
+                </Button>
+                <Button
+                    x:Name="ExplorerButton"
+                    Grid.Column="3"
+                    AutomationProperties.Name="在资源管理器中打开库"
+                    Click="Explorer_Click"
+                    IsEnabled="False"
+                    Style="{StaticResource SoftIconButtonStyle}"
+                    ToolTipService.ToolTip="在资源管理器中打开库">
+                    <FontIcon FontSize="16" Glyph="&#xE8B7;" />
+                </Button>
+</Grid>
+
+            <StackPanel Grid.Row="1" Spacing="8">
+                <InfoBar x:Name="StatusBar" Style="{StaticResource SoftInfoBarStyle}" IsClosable="True" IsOpen="False" />
+                <InfoBar
+                    x:Name="ExternalBar"
+                    Style="{StaticResource SoftInfoBarStyle}"
+                    Title="笔记被外部改动"
+                    Closed="ExternalBar_Closed"
+                    IsClosable="True"
+                    IsOpen="False"
+                    Message="Obsidian 或其他程序改了今日笔记。可以载入替换列表内容；关掉提示则在下次写入时写回。"
+                    Severity="Informational">
+                    <InfoBar.ActionButton>
+                        <Button Click="LoadExternal_Click" Content="载入" />
+                    </InfoBar.ActionButton>
+                </InfoBar>
+                <Border
+                    x:Name="OverduePanel"
+                    Padding="14,10"
+                    Background="{StaticResource SoftAmberBrush}"
+                    BorderBrush="#F0E6C8A0"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Visibility="Collapsed">
+                    <Grid RowSpacing="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid
+                            Background="Transparent"
+                            ColumnDefinitions="Auto,*,Auto"
+                            ColumnSpacing="8"
+                            Tapped="OverdueHeader_Tapped">
+                            <FontIcon
+                                FontSize="14"
+                                Foreground="{StaticResource SoftAmberInkBrush}"
+                                Glyph="&#xE706;"
+                                VerticalAlignment="Center" />
+                            <TextBlock
+                                x:Name="OverdueTitle"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SoftAmberInkBrush}"
+                                Text="昨日未完成"
+                                TextWrapping="NoWrap"
+                                TextTrimming="CharacterEllipsis" />
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                                <Button
+                                    x:Name="MoveAllOverdueButton"
+                                    Padding="8,2"
+                                    Click="MoveAllOverdue_Click"
+                                    Content="全部移到今天"
+                                    FontSize="11"
+                                    Style="{StaticResource QuietButtonStyle}"
+                                    Visibility="Collapsed" />
+                                <FontIcon
+                                    x:Name="OverdueChevron"
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    Foreground="{StaticResource SoftAmberInkBrush}"
+                                    Glyph="&#xE76C;" />
+                            </StackPanel>
+                        </Grid>
+                        <ListView
+                            x:Name="OverdueList"
+                            Grid.Row="1"
+                            MaxHeight="160"
+                            IsItemClickEnabled="True"
+                            ItemClick="OverdueList_ItemClick"
+                            SelectionMode="None"
+                            Visibility="Collapsed" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <Grid x:Name="WorkBody" Grid.Row="2" Visibility="Collapsed">
+                <ScrollViewer
+                    HorizontalScrollBarVisibility="Disabled"
+                    HorizontalScrollMode="Disabled"
+                    VerticalScrollBarVisibility="Auto"
+                    VerticalScrollMode="Enabled">
+                    <StackPanel Padding="0,0,4,8">
+                        <ItemsControl
+                            x:Name="CategoryCards"
+                            ItemTemplate="{StaticResource CategoryCardTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                        <TextBlock
+                            x:Name="EmptyHint"
+                            MaxWidth="360"
+                            Margin="24,56"
+                            HorizontalAlignment="Center"
+                            FontSize="13"
+                            Foreground="{StaticResource SoftMutedInkBrush}"
+                            Text="还没有任务，在下面加一条要做的事"
+                            TextAlignment="Center"
+                            TextWrapping="Wrap"
+                            Visibility="Collapsed" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <Border
+                x:Name="Composer"
+                Grid.Row="3"
+                Margin="0,4,0,0"
+                MinHeight="48"
+                Style="{StaticResource SoftPillComposerStyle}"
+                Visibility="Collapsed">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                    <FontIcon
+                        VerticalAlignment="Center"
+                        FontSize="14"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Glyph="&#xE710;" />
+                    <TextBox
+                        x:Name="AddBox"
+                        Grid.Column="1"
+                        MinHeight="36"
+                        AcceptsReturn="False"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        FontSize="14"
+                        KeyDown="AddBox_KeyDown"
+                        PlaceholderText="添加任务…"
+                        VerticalAlignment="Center" />
+                    <ComboBox
+                        x:Name="CategoryPicker"
+                        Style="{StaticResource SoftComboBoxStyle}"
+                        Grid.Column="2"
+                        MinWidth="100"
+                        MaxWidth="140"
+                        Height="36"
+                        VerticalAlignment="Center"
+                        CornerRadius="14"
+                        SelectionChanged="CategoryPicker_SelectionChanged"
+                        ToolTipService.ToolTip="新任务分类" />
+                </Grid>
+            </Border>
+
+            <!-- Hidden add click target kept for code compatibility if needed -->
+            <Button
+                x:Name="HiddenAddButton"
+                Click="Add_Click"
+                Visibility="Collapsed"
+                Content="添加" />
+
+            <StackPanel
+                x:Name="WelcomePanel"
+                Grid.Row="1"
+                Grid.RowSpan="3"
+                MaxWidth="440"
+                Margin="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="12">
+                <TextBlock
+                    FontSize="24"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource SoftInkBrush}"
+                    Text="连接每日笔记" />
+                <TextBlock
+                    FontSize="14"
+                    LineHeight="22"
+                    Foreground="{StaticResource SoftMutedInkBrush}"
+                    Text="DayList 不是另一套清单，它把待办写进 Obsidian 每日笔记的一个小节里，并用 ### 分类。"
+                    TextWrapping="Wrap" />
+                <Border
+                    Padding="14,12"
+                    Background="{StaticResource SoftCardBrush}"
+                    BorderBrush="{StaticResource SoftLineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="14">
+                    <TextBlock
+                        FontFamily="Cascadia Mono, Consolas"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Text="## DayList&#x0a;### 工作&#x0a;- [ ] 写周报&#x0a;  - [ ] 收集数据&#x0a;### 生活&#x0a;- [ ] 买牛奶" />
+                </Border>
+                <Button
+                    HorizontalAlignment="Left"
+                    Click="PickVault_Click"
+                    Content="选择库文件夹"
+                    Style="{StaticResource AccentButtonStyle}" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>
