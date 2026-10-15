@@ -239,6 +239,7 @@ public sealed partial class MainPage : Page
             source = _rows.Where(row => row.IsDone);
 
         _cards.Clear();
+        SyncCardTemplate();
         foreach (var group in GroupRows(source))
         {
             var card = new CategoryCardModel(group.Key);
@@ -249,6 +250,20 @@ public sealed partial class MainPage : Page
         }
 
         SyncNavChrome();
+    }
+
+    private void SyncCardTemplate()
+    {
+        if (CategoryCards is null)
+            return;
+
+        var key = _nav == MainNav.Completed ? "CompletedCardTemplate" : "CategoryCardTemplate";
+        if (Resources.TryGetValue(key, out var value)
+            && value is DataTemplate template
+            && !ReferenceEquals(CategoryCards.ItemTemplate, template))
+        {
+            CategoryCards.ItemTemplate = template;
+        }
     }
 
     private static List<(string Key, List<TaskRow> Rows)> GroupRows(IEnumerable<TaskRow> rows)
@@ -1835,8 +1850,9 @@ public sealed partial class MainPage : Page
             {
                 list.Children.Add(new TextBlock
                 {
-                    Text = "这一天还没有灵感。",
+                    Text = "还没有灵感。在下面写一句，点保存。不会进月报，也不是待办。",
                     FontSize = 12,
+                    TextWrapping = TextWrapping.Wrap,
                     Foreground = new SolidColorBrush(Color.FromArgb(255, 0x7A, 0x6F, 0x62))
                 });
                 return;
@@ -1884,7 +1900,7 @@ public sealed partial class MainPage : Page
         var (_, inspirationTitle) = HeadingSpec.Parse(_settings.InspirationHeading);
         var panel = new StackPanel { Spacing = 10, MaxWidth = 440 };
         panel.Children.Add(SoftUi.CreateDialogBody(
-            $"写在当天笔记的「{inspirationTitle}」小节，是普通列表，不是待办。不会进入月报，也不会参与生成计划。"));
+            $"在下面写一句，点保存。记在当天笔记的「{inspirationTitle}」。不是待办，不进月报，也不参与生成计划。"));
         panel.Children.Add(new ScrollViewer
         {
             Content = list,
@@ -1973,7 +1989,7 @@ public sealed partial class MainPage : Page
             Foreground = new SolidColorBrush(Color.FromArgb(255, 0xB3, 0x3A, 0x3A))
         };
         var panel = new StackPanel { Spacing = 8, MaxWidth = 380 };
-        panel.Children.Add(SoftUi.CreateDialogBody("设这一天的时间。到点会弹出提醒。DayList 需要开着，最小化到托盘也算；退出或重启后不会响。"));
+        panel.Children.Add(SoftUi.CreateDialogBody("填这一天的时间，例如 14:30，再点保存。到点会弹出提醒。需要 DayList 开着或在托盘里；退出后不会响，也不会改笔记里的任务。"));
         panel.Children.Add(box);
         panel.Children.Add(error);
 

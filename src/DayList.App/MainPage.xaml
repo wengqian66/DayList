@@ -193,6 +193,58 @@
                 </Grid>
             </Border>
         </DataTemplate>
+
+        <!-- Completed view: same grouping, no progress ring or N/N score. -->
+        <DataTemplate x:Key="CompletedCardTemplate" x:DataType="local:CategoryCardModel">
+            <Border
+                Margin="0,0,0,10"
+                AllowDrop="True"
+                Background="{StaticResource SoftCardBrush}"
+                BorderBrush="{StaticResource SoftLineBrush}"
+                BorderThickness="1"
+                CornerRadius="14"
+                DragOver="Header_DragOver"
+                Drop="Header_Drop"
+                ToolTipService.ToolTip="拖到卡片上可改分类">
+                <Grid ColumnDefinitions="4,*">
+                    <Border
+                        Background="{x:Bind AccentBrush, Mode=OneTime}"
+                        CornerRadius="14,0,0,14" />
+                    <StackPanel Grid.Column="1" Padding="12,8,12,6" Spacing="0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Padding="0,2,0,4">
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="13"
+                                Foreground="{x:Bind AccentBrush, Mode=OneTime}"
+                                Glyph="{x:Bind Glyph, Mode=OneTime}" />
+                            <TextBlock
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SoftInkBrush}"
+                                Text="{x:Bind Title, Mode=OneTime}"
+                                TextTrimming="CharacterEllipsis" />
+                            <TextBlock
+                                Grid.Column="2"
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                Text="{x:Bind CountText, Mode=OneWay}" />
+                        </Grid>
+                        <ItemsControl
+                            ItemTemplate="{StaticResource TaskItemTemplate}"
+                            ItemsSource="{x:Bind Tasks, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </Page.Resources>
 
     <Page.KeyboardAccelerators>
@@ -342,7 +394,8 @@
                     <Button
                         x:Name="NavDoneButton"
                         Click="NavDone_Click"
-                        Style="{StaticResource SoftNavButtonStyle}">
+                        Style="{StaticResource SoftNavButtonStyle}"
+                        ToolTipService.ToolTip="只看已经勾掉的任务，按分类排成列表，没有进度环。">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                             <FontIcon FontSize="15" Glyph="&#xE73E;" />
                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="已完成" />
@@ -366,7 +419,7 @@
                         x:Name="InspirationButton"
                         Click="Inspiration_Click"
                         Style="{StaticResource SoftNavButtonStyle}"
-                        ToolTipService.ToolTip="记下此刻的想法。写在当天笔记的灵感小节，不进待办，也不进月报。">
+                        ToolTipService.ToolTip="点这里写一句再保存。记在当天笔记的「灵感」小节，不是待办，不进月报，也不参与生成计划。">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                             <FontIcon FontSize="15" Glyph="&#xEA80;" />
                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="灵感" />

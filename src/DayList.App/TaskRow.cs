@@ -117,8 +117,8 @@ public sealed class TaskRow : INotifyPropertyChanged
     }
 
     public string ReminderToolTip => string.IsNullOrEmpty(_reminderTime)
-        ? "设置提醒时间"
-        : $"{_reminderTime} 提醒，点击修改";
+        ? "设提醒：填这一天的时间（如 14:30）。需要 DayList 开着或在托盘才会响，不改笔记。"
+        : $"{_reminderTime} 提醒。点击可改时间或清除。需要 DayList 开着或在托盘才会响。";
 
     public Visibility ReminderTimeVisibility =>
         string.IsNullOrEmpty(_reminderTime) ? Visibility.Collapsed : Visibility.Visible;
@@ -316,10 +316,14 @@ public sealed class CategoryCardModel : INotifyPropertyChanged
             Notify(nameof(ProgressValue));
             Notify(nameof(ProgressPercent));
             Notify(nameof(ProgressLabel));
+            Notify(nameof(CountText));
         }
     }
 
     public string FractionText => TotalCount == 0 ? "0 / 0" : $"{DoneCount} / {TotalCount}";
+
+    /// <summary>Item count for the completed list. Not a progress score.</summary>
+    public string CountText => TotalCount == 0 ? "" : $"{TotalCount} 项";
 
     public double ProgressValue => TotalCount == 0 ? 0 : (double)DoneCount / TotalCount;
 
