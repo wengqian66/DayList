@@ -61,7 +61,8 @@ public sealed partial class MainPage : Page
     private bool _syncError;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _syncClock;
     private int _celebrationToken;
-    private Storyboard? _celebrationStoryboard;
+    private int _celebrationHideToken;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _celebrationTimer;
     private int _statusToken;
     private int _statusDismissToken;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _statusTimer;
@@ -198,7 +199,7 @@ public sealed partial class MainPage : Page
         _pageCts.Cancel();
         _reminderTimer?.Stop();
         _syncClock?.Stop();
-        _celebrationStoryboard?.Stop();
+        HideCelebration();
         _watcher?.Dispose();
         _watcher = null;
     }
@@ -2233,22 +2234,172 @@ public sealed partial class MainPage : Page
 
     private void PlayMoment(CompletionMoment moment)
     {
+        if (_closed || !moment.Any || CelebrationBanner is null || CelebrationText is null)
+            return;
+
+        string text;
+        var pulseHost = false;
         if (moment.DayJustCompleted)
         {
-            PlayCelebration("今天都完成了");
-            PlayScale(SideProgressRing, 34);
+            text = "今天都完成了";
+            pulseHost = true;
+        }
+        else if (moment.CategoryJustCompleted is string category)
+        {
+            text = DayTaskCategory.Display(category) + "，这一类完成了";
+        }
+        else
+        {
             return;
         }
 
-        if (moment.CategoryJustCompleted is string category)
-            PlayCelebration(DayTaskCategory.Display(category) + "，这一类完成了");
+        // Checked is still on the stack. The banner was Collapsed, and the
+        // day path also used to storyboard a ScaleTransform on SideProgressRing.
+        // WinUI originates 0x800F1000 (Cannot resolve TargetName) for that
+        // Begin(); the XAML dispatcher then fail-fasts with 0xC000027B before
+        // the next frame, so the toast never appears. Wait until layout has
+        // given the banner a slot, and pulse the host grid — never the ring.
+        var token = ++_celebrationToken;
+        CelebrationText.Text = text;
+        CelebrationBanner.Opacity = 0;
+        CelebrationBanner.Visibility = Visibility.Visible;
+        StopMomentStoryboards();
+
+        var queued = DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
+            () => StartCelebration(token, pulseHost));
+        if (!queued)
+            ShowCelebrationTextOnly(token);
+    }
+
+    private void StartCelebration(int token, bool pulseHost)
+    {
+        if (_closed || token != _celebrationToken || CelebrationBanner is null)
+            return;
+
+        try
+        {
+            CelebrationBanner.UpdateLayout();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+
+        if (!CelebrationBanner.IsLoaded || !TryRestart(StoryboardResource("CelebrationStoryboard")))
+        {
+            ShowCelebrationTextOnly(token);
+            return;
+        }
+
+        if (pulseHost && SideProgressHost is { IsLoaded: true })
+            TryRestart(StoryboardResource("ProgressPulseStoryboard"));
+
+        ArmCelebrationHide(token);
+    }
+
+    private void ShowCelebrationTextOnly(int token)
+    {
+        if (_closed || token != _celebrationToken || CelebrationBanner is null)
+            return;
+
+        StopMomentStoryboards();
+        CelebrationBanner.Opacity = 1;
+        CelebrationBanner.Visibility = Visibility.Visible;
+        ArmCelebrationHide(token);
+    }
+
+    private void ArmCelebrationHide(int token)
+    {
+        _celebrationHideToken = token;
+        if (_celebrationTimer is null)
+        {
+            _celebrationTimer = DispatcherQueue.CreateTimer();
+            _celebrationTimer.IsRepeating = false;
+            _celebrationTimer.Tick += (_, _) =>
+            {
+                _celebrationTimer?.Stop();
+                if (_closed || _celebrationHideToken != _celebrationToken || CelebrationBanner is null)
+                    return;
+                StopMomentStoryboards();
+                CelebrationBanner.Opacity = 0;
+                CelebrationBanner.Visibility = Visibility.Collapsed;
+            };
+        }
+
+        _celebrationTimer.Stop();
+        _celebrationTimer.Interval = TimeSpan.FromMilliseconds(1700);
+        _celebrationTimer.Start();
+    }
+
+    private Storyboard? StoryboardResource(string key) =>
+        Resources.TryGetValue(key, out var value) ? value as Storyboard : null;
+
+    private static bool TryRestart(Storyboard? storyboard)
+    {
+        if (storyboard is null)
+            return false;
+
+        // Stop on a storyboard that has never been started can throw.
+        // That must not skip Begin — the first celebration would otherwise
+        // always fall through to the static toast.
+        try
+        {
+            storyboard.Stop();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+
+        try
+        {
+            storyboard.Begin();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            try
+            {
+                storyboard.Stop();
+            }
+            catch (Exception stopEx)
+            {
+                Debug.WriteLine(stopEx);
+            }
+
+            return false;
+        }
+    }
+
+    private void StopMomentStoryboards()
+    {
+        TryStop(StoryboardResource("CelebrationStoryboard"));
+        TryStop(StoryboardResource("ProgressPulseStoryboard"));
+    }
+
+    private static void TryStop(Storyboard? storyboard)
+    {
+        if (storyboard is null)
+            return;
+        try
+        {
+            storyboard.Stop();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
     }
 
     private void PlayCheckPop(CheckBox box) => PlayScale(box, 12, 1.16);
 
     private void PlayScale(FrameworkElement element, double center, double peak = 1.08)
     {
-        if (_closed)
+        // A determinate ProgressRing owns its composition visual. Assigning
+        // RenderTransform and storyboarding it is the day-complete crash.
+        if (_closed || element is ProgressRing || !element.IsLoaded || element.Visibility != Visibility.Visible)
             return;
 
         var scale = element.RenderTransform as ScaleTransform;
@@ -2274,7 +2425,14 @@ public sealed partial class MainPage : Page
         Storyboard.SetTargetProperty(scaleY, "ScaleY");
         storyboard.Children.Add(scaleX);
         storyboard.Children.Add(scaleY);
-        storyboard.Begin();
+        try
+        {
+            storyboard.Begin();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
     }
 
     private static DoubleAnimationUsingKeyFrames ScaleFrames(double peak)
@@ -2293,53 +2451,11 @@ public sealed partial class MainPage : Page
         return frames;
     }
 
-    private void PlayCelebration(string text)
-    {
-        if (_closed || CelebrationBanner is null || CelebrationText is null)
-            return;
-
-        _celebrationStoryboard?.Stop();
-        var token = ++_celebrationToken;
-        CelebrationText.Text = text;
-        CelebrationBanner.Visibility = Visibility.Visible;
-        CelebrationBanner.Opacity = 0;
-
-        var fadeIn = new DoubleAnimation
-        {
-            From = 0,
-            To = 1,
-            Duration = TimeSpan.FromMilliseconds(220),
-            EnableDependentAnimation = true
-        };
-        var fadeOut = new DoubleAnimation
-        {
-            From = 1,
-            To = 0,
-            BeginTime = TimeSpan.FromMilliseconds(1080),
-            Duration = TimeSpan.FromMilliseconds(460),
-            EnableDependentAnimation = true
-        };
-        var storyboard = new Storyboard();
-        Storyboard.SetTarget(fadeIn, CelebrationBanner);
-        Storyboard.SetTargetProperty(fadeIn, "Opacity");
-        Storyboard.SetTarget(fadeOut, CelebrationBanner);
-        Storyboard.SetTargetProperty(fadeOut, "Opacity");
-        storyboard.Children.Add(fadeIn);
-        storyboard.Children.Add(fadeOut);
-        storyboard.Completed += (_, _) =>
-        {
-            if (_closed || token != _celebrationToken || CelebrationBanner is null)
-                return;
-            CelebrationBanner.Visibility = Visibility.Collapsed;
-        };
-        _celebrationStoryboard = storyboard;
-        storyboard.Begin();
-    }
-
     private void HideCelebration()
     {
         _celebrationToken++;
-        _celebrationStoryboard?.Stop();
+        _celebrationTimer?.Stop();
+        StopMomentStoryboards();
         if (CelebrationBanner is null)
             return;
         CelebrationBanner.Opacity = 0;
