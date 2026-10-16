@@ -203,6 +203,37 @@ public class RetentionTests
     }
 
     [Fact]
+    public void Completion_LastOpenTask_IsTheDay_CategoryStaysSeparate()
+    {
+        var only = CompletionFeedback.Detect(
+            new[] { new TaskDoneSnapshot("工作", false) },
+            new[] { new TaskDoneSnapshot("工作", true) });
+        Assert.True(only.DayJustCompleted);
+        Assert.Null(only.CategoryJustCompleted);
+        Assert.True(only.Any);
+
+        var category = CompletionFeedback.Detect(
+            new[]
+            {
+                new TaskDoneSnapshot("工作", false),
+                new TaskDoneSnapshot("生活", false)
+            },
+            new[]
+            {
+                new TaskDoneSnapshot("工作", true),
+                new TaskDoneSnapshot("生活", false)
+            });
+        Assert.Equal("工作", category.CategoryJustCompleted);
+        Assert.False(category.DayJustCompleted);
+        Assert.True(category.Any);
+
+        Assert.False(CompletionFeedback.Detect([], []).Any);
+        Assert.False(CompletionFeedback.Detect(
+            new[] { new TaskDoneSnapshot("工作", false) },
+            new[] { new TaskDoneSnapshot("工作", false) }).Any);
+    }
+
+    [Fact]
     public void SyncStatus_UsesHumanRelativeTime()
     {
         var now = new DateTimeOffset(2026, 10, 16, 15, 0, 0, TimeSpan.FromHours(8));

@@ -8,6 +8,27 @@
     RequestedTheme="Light"
     UseLayoutRounding="True">
     <Page.Resources>
+        <!-- Page namescope, not a code-created storyboard. Begin() on a
+             storyboard whose target cannot be resolved originates 0x800F1000
+             and WinUI fail-fasts the process. -->
+        <Storyboard x:Key="CelebrationStoryboard">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CelebrationBanner" Storyboard.TargetProperty="Opacity">
+                <LinearDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.22" Value="1" />
+                <EasingDoubleKeyFrame KeyTime="0:0:1.08" Value="1" />
+                <EasingDoubleKeyFrame KeyTime="0:0:1.54" Value="0" />
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
+        <Storyboard x:Key="ProgressPulseStoryboard">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="SideProgressHostScale" Storyboard.TargetProperty="ScaleX">
+                <EasingDoubleKeyFrame KeyTime="0:0:0.12" Value="1.08" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.32" Value="1" />
+            </DoubleAnimationUsingKeyFrames>
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="SideProgressHostScale" Storyboard.TargetProperty="ScaleY">
+                <EasingDoubleKeyFrame KeyTime="0:0:0.12" Value="1.08" />
+                <EasingDoubleKeyFrame KeyTime="0:0:0.32" Value="1" />
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
         <DataTemplate x:Key="TaskItemTemplate" x:DataType="local:TaskRow">
             <Grid
                 Padding="4,3"
@@ -368,7 +389,14 @@
 
                     <!-- Progress: ring + labels side by side (mock) -->
                     <Grid Margin="0,18,0,4" ColumnDefinitions="Auto,*" ColumnSpacing="14">
-                        <Grid Width="72" Height="72">
+                        <Grid
+                            x:Name="SideProgressHost"
+                            Width="72"
+                            Height="72"
+                            RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="SideProgressHostScale" ScaleX="1" ScaleY="1" />
+                            </Grid.RenderTransform>
                             <ProgressRing
                                 x:Name="SideProgressRing"
                                 Width="68"
