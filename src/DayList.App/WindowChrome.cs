@@ -109,7 +109,7 @@ internal static class WindowChrome
         UpdateRegion(window);
     }
 
-    public static void ApplyBlurSurface(Control page, Border? sidebar)
+    public static void ApplyBlurSurface(FrameworkElement page, Border? sidebar)
     {
         if (!BlurActive)
             return;
@@ -517,7 +517,7 @@ internal static class WindowChrome
         public List<EdgeGrip> Grips { get; } = new();
     }
 
-    private sealed class EdgeGrip : Grid
+    private sealed class EdgeGrip : Border
     {
         public EdgeGrip(int hit, InputSystemCursorShape cursor)
         {

@@ -19,7 +19,7 @@ public sealed partial class SettingsWindow : Window
         InitializeComponent();
         Title = "设置";
         WindowChrome.Prepare(this, 560, 860, 480, 620);
-        ShellRoot.Loaded += OnShellLoaded;
+        Loaded += OnShellLoaded;
         _seed = current.Copy();
         Fill(current.Copy());
     }
@@ -255,7 +255,7 @@ public sealed partial class SettingsWindow : Window
 
     private void OnShellLoaded(object sender, RoutedEventArgs e)
     {
-        ShellRoot.Loaded -= OnShellLoaded;
+        Loaded -= OnShellLoaded;
         WindowChrome.Attach(this, ShellRoot, TitleBar, WindowOutline, TrafficLights, maximized =>
             ToolTipService.SetToolTip(ZoomLight, maximized ? "还原" : "最大化"));
         if (WindowChrome.BlurActive)

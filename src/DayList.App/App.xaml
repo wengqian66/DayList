@@ -140,6 +140,21 @@
                 <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI Variable, Segoe UI" />
                 <Setter Property="FontSize" Value="14" />
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="Resources">
+                    <Setter.Value>
+                        <ResourceDictionary>
+                            <SolidColorBrush x:Key="TextControlBackground" Color="#FFE8E8ED" />
+                            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#FFE8E8ED" />
+                            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#FFE8E8ED" />
+                            <SolidColorBrush x:Key="TextControlBorderBrush" Color="#00000000" />
+                            <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#00000000" />
+                            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#FF007AFF" />
+                            <SolidColorBrush x:Key="TextControlForeground" Color="#FF1D1D1F" />
+                            <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#FF1D1D1F" />
+                            <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#993C3C43" />
+                        </ResourceDictionary>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <!-- Soft overlays: dialogs, flyouts, calendar, infobars -->
@@ -234,6 +249,20 @@
                 <Setter Property="Padding" Value="10,8" />
                 <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI Variable, Segoe UI" />
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
+                <Setter Property="Resources">
+                    <Setter.Value>
+                        <ResourceDictionary>
+                            <SolidColorBrush x:Key="TextControlBackground" Color="#FFE8E8ED" />
+                            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#FFE8E8ED" />
+                            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#FFE8E8ED" />
+                            <SolidColorBrush x:Key="TextControlBorderBrush" Color="#00000000" />
+                            <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#00000000" />
+                            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#FF007AFF" />
+                            <SolidColorBrush x:Key="TextControlForeground" Color="#FF1D1D1F" />
+                            <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#993C3C43" />
+                        </ResourceDictionary>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
 
@@ -284,6 +313,18 @@
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
                 <Setter Property="RequestedTheme" Value="Light" />
                 <Setter Property="ItemContainerStyle" Value="{StaticResource SoftComboBoxItemStyle}" />
+                <Setter Property="Resources">
+                    <Setter.Value>
+                        <ResourceDictionary>
+                            <SolidColorBrush x:Key="ComboBoxBackground" Color="#FFE8E8ED" />
+                            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#FFE8E8ED" />
+                            <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#FFE8E8ED" />
+                            <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#00000000" />
+                            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#00000000" />
+                            <SolidColorBrush x:Key="ComboBoxBorderBrushFocused" Color="#FF007AFF" />
+                        </ResourceDictionary>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
 
