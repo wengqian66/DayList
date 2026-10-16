@@ -2,9 +2,64 @@
 <Window
     x:Class="DayList.SettingsWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Background="{StaticResource SoftCreamBrush}" RequestedTheme="Light">
-        <Grid Padding="18,16,18,14" RowSpacing="12">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DayList">
+    <Grid x:Name="ShellRoot" Background="{StaticResource SoftCreamBrush}" RequestedTheme="Light" FontFamily="Segoe UI Variable Text, Segoe UI Variable, Segoe UI">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid x:Name="TitleBar" Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="108" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="108" />
+            </Grid.ColumnDefinitions>
+            <StackPanel
+                x:Name="TrafficLights"
+                Margin="14,0,0,0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="2">
+                <Button
+                    AutomationProperties.Name="关闭"
+                    Background="#FF5F57"
+                    Click="ChromeClose_Click"
+                    Content="×"
+                    Style="{StaticResource TrafficLightStyle}"
+                    ToolTipService.ToolTip="关闭" />
+                <Button
+                    AutomationProperties.Name="最小化"
+                    Background="#FFFEBC2E"
+                    Click="ChromeMin_Click"
+                    Content="–"
+                    Style="{StaticResource TrafficLightStyle}"
+                    ToolTipService.ToolTip="最小化" />
+                <Button
+                    x:Name="ZoomLight"
+                    AutomationProperties.Name="最大化"
+                    Background="#FF28C840"
+                    Click="ChromeZoom_Click"
+                    Content="+"
+                    Style="{StaticResource TrafficLightStyle}"
+                    ToolTipService.ToolTip="最大化" />
+            </StackPanel>
+            <TextBlock
+                Grid.Column="1"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                FontSize="13"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource SoftInkBrush}"
+                Text="设置" />
+            <Border
+                Grid.ColumnSpan="3"
+                Height="1"
+                VerticalAlignment="Bottom"
+                Background="#14000000"
+                IsHitTestVisible="False" />
+        </Grid>
+        <Grid Grid.Row="1" Padding="18,8,18,14" RowSpacing="12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -13,20 +68,16 @@
 
             <StackPanel Spacing="4">
                 <TextBlock
-                    FontSize="22"
-                    FontWeight="SemiBold"
-                    Foreground="{StaticResource SoftInkBrush}"
-                    Text="设置" />
-                <TextBlock
-                    FontSize="12"
+                    FontSize="13"
                     Foreground="{StaticResource SoftMutedInkBrush}"
                     Text="任务只写进每日笔记。这里配置库位置、桌面行为和 AI 接口。"
                     TextWrapping="Wrap" />
             </StackPanel>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled">
-                <StackPanel Spacing="14" Padding="0,4,6,10">
+            <ScrollViewer x:Name="SettingsScroller" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled">
+                <StackPanel Spacing="4" Padding="0,4,6,10">
 
+                    <local:SoftCard Padding="4,2,4,10">
                     <Border Style="{StaticResource SoftSettingsCardStyle}">
                         <StackPanel Spacing="8">
                             <TextBlock Style="{StaticResource SoftSettingsSectionTitleStyle}" Text="库" />
@@ -48,7 +99,9 @@
                                 TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+                    </local:SoftCard>
 
+                    <local:SoftCard Padding="4,2,4,10">
                     <Border Style="{StaticResource SoftSettingsCardStyle}">
                         <StackPanel Spacing="8">
                             <TextBlock Style="{StaticResource SoftSettingsSectionTitleStyle}" Text="每日笔记" />
@@ -63,7 +116,9 @@
                             <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="今日任务上方会列出当天已记下的句子。点某一条，或侧栏「灵感」，可以改、删或再写一句。记在当天笔记的这个小节（默认「灵感」）。不是待办，不进已完成，不进月报，也不参与生成计划。" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+                    </local:SoftCard>
 
+                    <local:SoftCard Padding="4,2,4,10">
                     <Border Style="{StaticResource SoftSettingsCardStyle}">
                         <StackPanel Spacing="8">
                             <TextBlock Style="{StaticResource SoftSettingsSectionTitleStyle}" Text="桌面交互" />
@@ -78,7 +133,9 @@
                             <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="任务行右侧铃铛可滚动选择时间。提醒需要 DayList 正在运行（最小化到托盘即可）。退出或重启后系统不会补响。再次打开时，12 小时内错过的会补一次。" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+                    </local:SoftCard>
 
+                    <local:SoftCard Padding="4,2,4,10">
                     <Border Style="{StaticResource SoftSettingsCardStyle}">
                         <StackPanel Spacing="8">
                             <TextBlock Style="{StaticResource SoftSettingsSectionTitleStyle}" Text="AI（月报 / 自然语言计划）" />
@@ -97,6 +154,7 @@
                             <TextBlock x:Name="PreviewText" FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+                    </local:SoftCard>
                 </StackPanel>
             </ScrollViewer>
 
@@ -112,5 +170,12 @@
                 </StackPanel>
             </Grid>
         </Grid>
+        <Border
+            x:Name="WindowOutline"
+            Grid.RowSpan="2"
+            BorderBrush="#24000000"
+            BorderThickness="1"
+            CornerRadius="12"
+            IsHitTestVisible="False" />
     </Grid>
 </Window>
