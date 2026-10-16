@@ -6,6 +6,7 @@ using DayList.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
@@ -48,6 +49,16 @@ public sealed partial class MainPage : Page
     private bool _editingSection;
     private bool _sectionCommitPending;
     private bool _overdueExpanded;
+    private CarryOverMemory _carryMemory = new();
+    private List<OverdueTaskItem> _pendingOverdue = new();
+    private string _overdueFilter = CarryOverOffer.AllLabel;
+    private bool _templatesReady;
+    private bool _noteMatchesDisk = true;
+    private DateTimeOffset? _lastSyncAt;
+    private bool _syncError;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _syncClock;
+    private int _celebrationToken;
+    private Storyboard? _celebrationStoryboard;
     private int _statusToken;
     private int _statusDismissToken;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _statusTimer;
@@ -72,6 +83,8 @@ public sealed partial class MainPage : Page
         {
             if (_suspendRowRebuild)
                 return;
+            if (!Suppressed)
+                _noteMatchesDisk = false;
             RebuildList();
             UpdateStats();
             RefreshCategoryPicker();
@@ -144,8 +157,18 @@ public sealed partial class MainPage : Page
         _watchTimer.Interval = TimeSpan.FromMilliseconds(220);
         _watchTimer.Tick += (_, _) => ReloadFromDisk();
         _settings = SettingsStore.Load();
+        try
+        {
+            _carryMemory = CarryOverStore.Load();
+        }
+        catch
+        {
+            _carryMemory = new CarryOverMemory();
+        }
+
         PinButton.IsChecked = _settings.AlwaysOnTop;
         SyncPinChrome();
+        EnsureTemplateButtons();
         ShowMode();
         RefreshCategoryPicker();
         SoftUi.StyleComboBox(CategoryPicker);
@@ -172,6 +195,8 @@ public sealed partial class MainPage : Page
         _closed = true;
         _pageCts.Cancel();
         _reminderTimer?.Stop();
+        _syncClock?.Stop();
+        _celebrationStoryboard?.Stop();
         _watcher?.Dispose();
         _watcher = null;
     }
@@ -191,15 +216,19 @@ public sealed partial class MainPage : Page
             SetSectionChromeVisible(false);
             OverduePanel.Visibility = Visibility.Collapsed;
             NavInspirationCount.Text = "";
+            if (SyncCapsule is not null)
+                SyncCapsule.Visibility = Visibility.Collapsed;
         }
         else
         {
             RefreshSectionTitleChrome();
+            RenderSyncCapsule();
         }
     }
 
     private void LoadDay()
     {
+        HideCelebration();
         PushSuppress();
         try
         {
@@ -239,6 +268,7 @@ public sealed partial class MainPage : Page
         ApplyInspirations(snapshot.Inspirations);
         BindReminders();
         _knownHash = snapshot.ContentHash;
+        _noteMatchesDisk = true;
         PathText.Text = FormatNoteSubtitle(snapshot.RelativePath, snapshot.FileExists);
         ToolTipService.SetToolTip(PathText, snapshot.FullPath);
         RefreshSectionTitleChrome();
@@ -327,9 +357,11 @@ public sealed partial class MainPage : Page
 
     private void RefreshOverdue()
     {
-        _overdue.Clear();
+        if (OverduePanel is null)
+            return;
+
         var today = DateOnly.FromDateTime(DateTime.Now);
-        if (!_settings.HasVault || _date != today)
+        if (!_settings.HasVault || _date != today || _nav != MainNav.Today)
         {
             _overdueExpanded = false;
             OverduePanel.Visibility = Visibility.Collapsed;
@@ -337,10 +369,55 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        foreach (var item in OverdueScan.CollectOpenBefore(_settings, today))
+        IReadOnlyList<OverdueTaskItem> open;
+        try
+        {
+            open = OverdueScan.CollectOpenBefore(_settings, today);
+        }
+        catch
+        {
+            open = Array.Empty<OverdueTaskItem>();
+        }
+
+        var todayTasks = _rows.Select(row => new TodayTaskRef(row.Text, row.Category)).ToList();
+        var absorbed = open.Where(item => CarryOverOffer.AlreadyOnToday(item, todayTasks)).ToList();
+        // Only remember tasks that are actually in the note. A failed write must not
+        // dismiss the banner across the next launch.
+        if (_noteMatchesDisk && absorbed.Count > 0)
+            RememberHandled(absorbed);
+
+        _pendingOverdue = CarryOverOffer.Pending(open, todayTasks, _carryMemory, today).ToList();
+        if (!string.Equals(_overdueFilter, CarryOverOffer.AllLabel, StringComparison.Ordinal)
+            && CarryOverOffer.Filter(_pendingOverdue, _overdueFilter).Count == 0)
+        {
+            _overdueFilter = CarryOverOffer.AllLabel;
+        }
+
+        ApplyOverdueFilter();
+    }
+
+    private void ApplyOverdueFilter()
+    {
+        var visible = CarryOverOffer.Filter(_pendingOverdue, _overdueFilter);
+        _overdue.Clear();
+        foreach (var item in visible)
             _overdue.Add(new OverdueRow(item));
 
-        if (_overdue.Count == 0)
+        if (OverdueFilterLabel is not null)
+        {
+            var label = string.IsNullOrWhiteSpace(_overdueFilter)
+                ? CarryOverOffer.AllLabel
+                : _overdueFilter;
+            OverdueFilterLabel.Text = label;
+            // 「全部」must stay fully visible. Only long category names ellipsize.
+            var keepWholeWord = label.Length <= 4;
+            OverdueFilterLabel.MaxWidth = keepWholeWord ? double.PositiveInfinity : 120;
+            OverdueFilterLabel.TextTrimming = keepWholeWord
+                ? TextTrimming.None
+                : TextTrimming.CharacterEllipsis;
+        }
+
+        if (_pendingOverdue.Count == 0)
         {
             _overdueExpanded = false;
             OverduePanel.Visibility = Visibility.Collapsed;
@@ -355,12 +432,14 @@ public sealed partial class MainPage : Page
 
     private void SyncOverdueChrome()
     {
+        if (OverdueChevron is null || OverdueTitle is null || OverdueList is null)
+            return;
+
         var expanded = _overdueExpanded && _overdue.Count > 0;
-        OverdueChevron.Glyph = expanded ? "" : "";
+        OverdueChevron.Glyph = expanded ? "\uE70D" : "\uE76C";
         OverdueList.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
-        MoveAllOverdueButton.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
-        OverdueTitle.Text = _overdue.Count == 0
-            ? "昨日未完成"
+        OverdueTitle.Text = _pendingOverdue.Count == 0
+            ? "昨天未完成"
             : $"昨天未完成 {_overdue.Count} 项";
     }
 
@@ -368,18 +447,80 @@ public sealed partial class MainPage : Page
     {
         if (e.OriginalSource is DependencyObject source)
         {
-            for (var current = source; current is not null; current = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(current))
+            for (var current = source; current is not null; current = VisualTreeHelper.GetParent(current))
             {
-                if (ReferenceEquals(current, MoveAllOverdueButton))
+                if (ReferenceEquals(current, BringTodayButton)
+                    || ReferenceEquals(current, OverdueFilterButton)
+                    || ReferenceEquals(current, DismissOverdueButton))
                     return;
             }
         }
 
-        if (_overdue.Count == 0)
+        if (_pendingOverdue.Count == 0)
             return;
         e.Handled = true;
         _overdueExpanded = !_overdueExpanded;
         SyncOverdueChrome();
+    }
+
+    private void OverdueFilter_Click(object sender, RoutedEventArgs e)
+    {
+        var flyout = new MenuFlyout();
+        foreach (var label in OverdueFilterLabels())
+        {
+            var captured = label;
+            var item = new MenuFlyoutItem { Text = captured };
+            if (string.Equals(captured, _overdueFilter, StringComparison.Ordinal))
+                item.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+            item.Click += (_, _) =>
+            {
+                _overdueFilter = captured;
+                ApplyOverdueFilter();
+            };
+            flyout.Items.Add(item);
+        }
+
+        flyout.ShowAt(OverdueFilterButton);
+    }
+
+    private IEnumerable<string> OverdueFilterLabels()
+    {
+        yield return CarryOverOffer.AllLabel;
+        foreach (var name in _pendingOverdue
+            .Select(item => DayTaskCategory.Display(item.Category))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(name => name, StringComparer.CurrentCulture))
+        {
+            if (!string.Equals(name, CarryOverOffer.AllLabel, StringComparison.Ordinal))
+                yield return name;
+        }
+    }
+
+    private void DismissOverdue_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pendingOverdue.Count == 0)
+            return;
+        RememberHandled(_pendingOverdue);
+        _overdueExpanded = false;
+        RefreshOverdue();
+    }
+
+    private void RememberHandled(IEnumerable<OverdueTaskItem> items)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var updated = CarryOverOffer.MarkHandled(_carryMemory, today, items);
+        if (updated.SameAs(_carryMemory))
+            return;
+
+        _carryMemory = updated;
+        try
+        {
+            CarryOverStore.Save(_carryMemory);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("没能记下已处理的未完成项：" + ex.Message, InfoBarSeverity.Warning);
+        }
     }
 
     private void RefreshCategoryPicker()
@@ -566,18 +707,23 @@ public sealed partial class MainPage : Page
             card.RefreshStats();
 
         var today = DateOnly.FromDateTime(DateTime.Now);
+        var showTemplates = _nav == MainNav.Today && total == 0 && _settings.HasVault;
         if (_nav == MainNav.Completed)
         {
             EmptyHint.Text = done == 0 ? "还没有已完成的任务" : "";
-            EmptyHint.Visibility = done == 0 ? Visibility.Visible : Visibility.Collapsed;
+            EmptyState.Visibility = done == 0 ? Visibility.Visible : Visibility.Collapsed;
+            TemplateLead.Visibility = Visibility.Collapsed;
+            TemplateHost.Visibility = Visibility.Collapsed;
             GreetingText.Text = done == 0 ? "完成任务后会出现在这里。" : "这些是已经勾掉的任务。";
         }
         else
         {
             EmptyHint.Text = _date == today
-                ? "今天还没有任务，在下面写上一条要做的事。"
+                ? "今天还没有任务"
                 : "这一天还没有任务";
-            EmptyHint.Visibility = total == 0 ? Visibility.Visible : Visibility.Collapsed;
+            EmptyState.Visibility = total == 0 ? Visibility.Visible : Visibility.Collapsed;
+            TemplateLead.Visibility = showTemplates ? Visibility.Visible : Visibility.Collapsed;
+            TemplateHost.Visibility = showTemplates ? Visibility.Visible : Visibility.Collapsed;
             GreetingText.Text = total == 0
                 ? "今天也是充实的一天。"
                 : open == 0
@@ -629,6 +775,7 @@ public sealed partial class MainPage : Page
         _nav = MainNav.Today;
         RebuildList();
         UpdateStats();
+        RefreshOverdue();
     }
 
     private void NavDone_Click(object sender, RoutedEventArgs e)
@@ -638,6 +785,7 @@ public sealed partial class MainPage : Page
         _nav = MainNav.Completed;
         RebuildList();
         UpdateStats();
+        RefreshOverdue();
     }
 
     private void SyncNavChrome()
@@ -839,6 +987,7 @@ public sealed partial class MainPage : Page
         if (!TaskCheckInteraction.DoneFlagChanged(row.IsDone, done))
             return;
 
+        var before = DoneSnapshots();
         row.IsDone = done;
         if (_nav == MainNav.Completed)
         {
@@ -848,9 +997,13 @@ public sealed partial class MainPage : Page
         }
 
         UpdateStats();
+        if (done)
+            PlayCheckPop(box);
         if (_pendingExternal)
             return;
         Persist();
+        if (done)
+            PlayMoment(CompletionFeedback.Detect(before, DoneSnapshots()));
     }
 
     private void TaskText_GotFocus(object sender, RoutedEventArgs e) => _textFocus++;
@@ -1059,15 +1212,26 @@ public sealed partial class MainPage : Page
 
     private void MoveAllOverdue_Click(object sender, RoutedEventArgs e)
     {
+        if (_pendingExternal)
+        {
+            ShowStatus("先处理笔记的外部更新，再移入任务。", InfoBarSeverity.Warning);
+            return;
+        }
+
         var snapshot = _overdue.ToList();
+        if (snapshot.Count == 0)
+            return;
+
         foreach (var row in snapshot)
-            BringOverdue(row, persist: false);
-        Persist();
-        RefreshOverdue();
+            BringOverdue(row, persist: false, remember: false);
+        if (!Persist())
+            return;
+        RememberHandled(snapshot.Select(row => row.Item));
         UpdateStats();
+        RefreshOverdue();
     }
 
-    private void BringOverdue(OverdueRow overdue, bool persist = true)
+    private void BringOverdue(OverdueRow overdue, bool persist = true, bool remember = true)
     {
         if (_pendingExternal)
         {
@@ -1091,18 +1255,14 @@ public sealed partial class MainPage : Page
             });
         }
 
-        _overdue.Remove(overdue);
-        if (_overdue.Count == 0)
-        {
-            _overdueExpanded = false;
-            OverduePanel.Visibility = Visibility.Collapsed;
-        }
-        SyncOverdueChrome();
-        if (persist)
-        {
-            Persist();
-            UpdateStats();
-        }
+        if (!persist)
+            return;
+        if (!Persist())
+            return;
+        if (remember)
+            RememberHandled(new[] { overdue.Item });
+        UpdateStats();
+        RefreshOverdue();
     }
 
     private void Pin_Click(object sender, RoutedEventArgs e)
@@ -1281,6 +1441,7 @@ public sealed partial class MainPage : Page
                 Persist();
 
             var added = PlanDraftApply.Apply(_settings, result.Tasks);
+            NoteSyncSuccess();
 
             if (result.Tasks.Any(t => t.Date == _date))
                 LoadDay();
@@ -1296,6 +1457,7 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
+            NoteSyncFailure();
             ShowStatus("写入失败：" + ex.Message, InfoBarSeverity.Error);
         }
     }
@@ -1352,6 +1514,7 @@ public sealed partial class MainPage : Page
             switch (result.Status)
             {
                 case MonthlyReportStatus.Saved:
+                    NoteSyncSuccess();
                     ShowStatus(result.Message, InfoBarSeverity.Success, "定位到", () => OpenInExplorer(result.FullPath!));
                     break;
                 case MonthlyReportStatus.EmptyMonth:
@@ -1474,10 +1637,10 @@ public sealed partial class MainPage : Page
         ReloadFromDisk();
     }
 
-    private void Persist()
+    private bool Persist()
     {
         if (Suppressed || _pendingExternal || !_settings.HasVault || _closed)
-            return;
+            return false;
         try
         {
             var result = DailyNoteStore.Write(_settings, _date, CurrentTasks());
@@ -1485,11 +1648,274 @@ public sealed partial class MainPage : Page
             ArmWatcher(result.FullPath);
             PathText.Text = FormatNoteSubtitle(result.RelativePath, File.Exists(result.FullPath));
             RefreshSectionTitleChrome();
+            _noteMatchesDisk = true;
+            NoteVaultWrite(result);
+            return true;
         }
         catch (Exception ex)
         {
+            _noteMatchesDisk = false;
+            NoteSyncFailure();
             ShowStatus(ex.Message, InfoBarSeverity.Error);
+            return false;
         }
+    }
+
+    private void NoteVaultWrite(WriteResult result)
+    {
+        _syncError = false;
+        if (result.Wrote)
+            _lastSyncAt = DateTimeOffset.Now;
+        RenderSyncCapsule();
+        if (result.Wrote)
+            EnsureSyncClock();
+    }
+
+    private void NoteSyncSuccess()
+    {
+        _syncError = false;
+        _lastSyncAt = DateTimeOffset.Now;
+        RenderSyncCapsule();
+        EnsureSyncClock();
+    }
+
+    private void NoteSyncFailure()
+    {
+        _syncError = true;
+        RenderSyncCapsule();
+    }
+
+    private void RenderSyncCapsule()
+    {
+        if (SyncCapsule is null || SyncLabel is null || SyncDot is null)
+            return;
+        if (!_settings.HasVault)
+        {
+            SyncCapsule.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        SyncCapsule.Visibility = Visibility.Visible;
+        var phase = _syncError
+            ? SyncPhase.Error
+            : _lastSyncAt is null ? SyncPhase.Idle : SyncPhase.Saved;
+        SyncLabel.Text = SyncStatusText.Format(phase, _lastSyncAt, DateTimeOffset.Now);
+        SyncDot.Fill = new SolidColorBrush(phase switch
+        {
+            SyncPhase.Error => Color.FromArgb(255, 0xC4, 0x6A, 0x4A),
+            SyncPhase.Saved => Color.FromArgb(255, 0x6B, 0xB5, 0x6C),
+            _ => Color.FromArgb(255, 0xC4, 0xB0, 0x9A)
+        });
+    }
+
+    private void EnsureSyncClock()
+    {
+        if (_syncClock is not null)
+            return;
+        _syncClock = DispatcherQueue.CreateTimer();
+        _syncClock.Interval = TimeSpan.FromSeconds(15);
+        _syncClock.IsRepeating = true;
+        _syncClock.Tick += (_, _) =>
+        {
+            if (!_closed)
+                RenderSyncCapsule();
+        };
+        _syncClock.Start();
+    }
+
+    private void EnsureTemplateButtons()
+    {
+        if (_templatesReady || TemplateHost is null)
+            return;
+        _templatesReady = true;
+        foreach (var template in DayTemplates.Starters)
+        {
+            var stack = new StackPanel { Spacing = 2 };
+            stack.Children.Add(new TextBlock
+            {
+                Text = template.Title,
+                FontSize = 14,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Foreground = (Brush)Application.Current.Resources["SoftInkBrush"]
+            });
+            stack.Children.Add(new TextBlock
+            {
+                Text = template.Blurb,
+                FontSize = 12,
+                Foreground = (Brush)Application.Current.Resources["SoftMutedInkBrush"],
+                TextWrapping = TextWrapping.Wrap
+            });
+            var button = new Button
+            {
+                Content = stack,
+                Tag = template.Id,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Background = (Brush)Application.Current.Resources["SoftCardBrush"],
+                BorderBrush = (Brush)Application.Current.Resources["SoftLineBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(14),
+                Padding = new Thickness(14, 10, 14, 10)
+            };
+            button.Click += Template_Click;
+            TemplateHost.Children.Add(button);
+        }
+    }
+
+    private void Template_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string id)
+            return;
+        ApplyTemplate(id);
+    }
+
+    private void ApplyTemplate(string id)
+    {
+        var template = DayTemplates.Find(id);
+        if (template is null || !_settings.HasVault || Suppressed)
+            return;
+        if (_pendingExternal)
+        {
+            ShowStatus("先处理笔记的外部更新，再添加任务。", InfoBarSeverity.Warning);
+            return;
+        }
+
+        _suspendRowRebuild = true;
+        try
+        {
+            foreach (var task in template.CreateTasks())
+                InsertRow(TaskRow.From(task));
+        }
+        finally
+        {
+            _suspendRowRebuild = false;
+        }
+
+        RebuildList();
+        UpdateStats();
+        RefreshCategoryPicker();
+        Persist();
+        ShowStatus($"已放入「{template.Title}」。", InfoBarSeverity.Success);
+    }
+
+    private static List<TaskDoneSnapshot> DoneSnapshots(IEnumerable<TaskRow> rows) =>
+        rows.Select(row => new TaskDoneSnapshot(row.Category, row.IsDone)).ToList();
+
+    private List<TaskDoneSnapshot> DoneSnapshots() => DoneSnapshots(_rows);
+
+    private void PlayMoment(CompletionMoment moment)
+    {
+        if (moment.DayJustCompleted)
+        {
+            PlayCelebration("今天都完成了");
+            PlayScale(SideProgressRing, 34);
+            return;
+        }
+
+        if (moment.CategoryJustCompleted is string category)
+            PlayCelebration(DayTaskCategory.Display(category) + "，这一类完成了");
+    }
+
+    private void PlayCheckPop(CheckBox box) => PlayScale(box, 12, 1.16);
+
+    private void PlayScale(FrameworkElement element, double center, double peak = 1.08)
+    {
+        if (_closed)
+            return;
+
+        var scale = element.RenderTransform as ScaleTransform;
+        if (scale is null)
+        {
+            scale = new ScaleTransform { ScaleX = 1, ScaleY = 1, CenterX = center, CenterY = center };
+            element.RenderTransform = scale;
+        }
+        else
+        {
+            scale.CenterX = center;
+            scale.CenterY = center;
+            scale.ScaleX = 1;
+            scale.ScaleY = 1;
+        }
+
+        var storyboard = new Storyboard();
+        var scaleX = ScaleFrames(peak);
+        var scaleY = ScaleFrames(peak);
+        Storyboard.SetTarget(scaleX, scale);
+        Storyboard.SetTargetProperty(scaleX, "ScaleX");
+        Storyboard.SetTarget(scaleY, scale);
+        Storyboard.SetTargetProperty(scaleY, "ScaleY");
+        storyboard.Children.Add(scaleX);
+        storyboard.Children.Add(scaleY);
+        storyboard.Begin();
+    }
+
+    private static DoubleAnimationUsingKeyFrames ScaleFrames(double peak)
+    {
+        var frames = new DoubleAnimationUsingKeyFrames();
+        frames.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)),
+            Value = peak
+        });
+        frames.KeyFrames.Add(new EasingDoubleKeyFrame
+        {
+            KeyTime = KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(320)),
+            Value = 1
+        });
+        return frames;
+    }
+
+    private void PlayCelebration(string text)
+    {
+        if (_closed || CelebrationBanner is null || CelebrationText is null)
+            return;
+
+        _celebrationStoryboard?.Stop();
+        var token = ++_celebrationToken;
+        CelebrationText.Text = text;
+        CelebrationBanner.Visibility = Visibility.Visible;
+        CelebrationBanner.Opacity = 0;
+
+        var fadeIn = new DoubleAnimation
+        {
+            From = 0,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(220),
+            EnableDependentAnimation = true
+        };
+        var fadeOut = new DoubleAnimation
+        {
+            From = 1,
+            To = 0,
+            BeginTime = TimeSpan.FromMilliseconds(1080),
+            Duration = TimeSpan.FromMilliseconds(460),
+            EnableDependentAnimation = true
+        };
+        var storyboard = new Storyboard();
+        Storyboard.SetTarget(fadeIn, CelebrationBanner);
+        Storyboard.SetTargetProperty(fadeIn, "Opacity");
+        Storyboard.SetTarget(fadeOut, CelebrationBanner);
+        Storyboard.SetTargetProperty(fadeOut, "Opacity");
+        storyboard.Children.Add(fadeIn);
+        storyboard.Children.Add(fadeOut);
+        storyboard.Completed += (_, _) =>
+        {
+            if (_closed || token != _celebrationToken || CelebrationBanner is null)
+                return;
+            CelebrationBanner.Visibility = Visibility.Collapsed;
+        };
+        _celebrationStoryboard = storyboard;
+        storyboard.Begin();
+    }
+
+    private void HideCelebration()
+    {
+        _celebrationToken++;
+        _celebrationStoryboard?.Stop();
+        if (CelebrationBanner is null)
+            return;
+        CelebrationBanner.Opacity = 0;
+        CelebrationBanner.Visibility = Visibility.Collapsed;
     }
 
     private void ReloadFromDisk()
@@ -1768,10 +2194,12 @@ public sealed partial class MainPage : Page
                 var rewritten = DailyNoteStore.RewriteSectionHeading(_settings, _date, oldHeading);
                 if (rewritten.Wrote)
                     _knownHash = rewritten.ContentHash;
+                NoteVaultWrite(rewritten);
             }
         }
         catch (Exception ex)
         {
+            NoteSyncFailure();
             ShowStatus("小节标题已保存，但笔记标题没改成功：" + ex.Message, InfoBarSeverity.Warning);
         }
 
@@ -1964,6 +2392,7 @@ public sealed partial class MainPage : Page
             "保存");
 
         _inspirationDialogOpen = true;
+        var attemptedWrite = false;
         try
         {
             if (await dialog.ShowAsync() != ContentDialogResult.Primary)
@@ -1993,7 +2422,9 @@ public sealed partial class MainPage : Page
                 });
             }
 
+            attemptedWrite = true;
             var result = DailyNoteStore.WriteInspirations(_settings, _date, kept);
+            NoteVaultWrite(result);
             ApplyInspirations(kept);
             ArmWatcher(result.FullPath);
             if (File.Exists(result.FullPath))
@@ -2002,6 +2433,8 @@ public sealed partial class MainPage : Page
         }
         catch (Exception ex)
         {
+            if (attemptedWrite)
+                NoteSyncFailure();
             ShowStatus(ex.Message, InfoBarSeverity.Error);
         }
         finally

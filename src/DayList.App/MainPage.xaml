@@ -246,6 +246,30 @@
             </Border>
         </DataTemplate>
 
+        <DataTemplate x:Key="OverdueItemTemplate" x:DataType="local:OverdueRow">
+            <Grid Padding="2,3" ColumnDefinitions="40,*,Auto" ColumnSpacing="8">
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="{StaticResource SoftMutedInkBrush}"
+                    Text="{x:Bind DateLabel, Mode=OneTime}" />
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    FontSize="13"
+                    Foreground="{StaticResource SoftInkBrush}"
+                    Text="{x:Bind Text, Mode=OneTime}"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap" />
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    FontSize="11"
+                    Foreground="{StaticResource SoftMutedInkBrush}"
+                    Text="{x:Bind CategoryLabel, Mode=OneTime}" />
+            </Grid>
+        </DataTemplate>
+
         <DataTemplate x:Key="InspirationGlanceTemplate" x:DataType="local:InspirationGlance">
             <Button
                 MinWidth="0"
@@ -636,6 +660,31 @@
 </Grid>
 
             <StackPanel Grid.Row="1" Spacing="8">
+                <Border
+                    x:Name="SyncCapsule"
+                    HorizontalAlignment="Left"
+                    Padding="10,4"
+                    Background="{StaticResource SoftCardBrush}"
+                    BorderBrush="{StaticResource SoftLineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Ellipse
+                            x:Name="SyncDot"
+                            Width="7"
+                            Height="7"
+                            VerticalAlignment="Center"
+                            Fill="{StaticResource SoftMutedInkBrush}" />
+                        <TextBlock
+                            x:Name="SyncLabel"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource SoftMutedInkBrush}"
+                            Text="已连接 Obsidian"
+                            TextWrapping="NoWrap" />
+                    </StackPanel>
+                </Border>
                 <InfoBar x:Name="StatusBar" Style="{StaticResource SoftInfoBarStyle}" IsClosable="True" IsOpen="False" />
                 <InfoBar
                     x:Name="ExternalBar"
@@ -652,7 +701,7 @@
                 </InfoBar>
                 <Border
                     x:Name="OverduePanel"
-                    Padding="14,10"
+                    Padding="12,8"
                     Background="{StaticResource SoftAmberBrush}"
                     BorderBrush="#F0E6C8A0"
                     BorderThickness="1"
@@ -665,7 +714,7 @@
                         </Grid.RowDefinitions>
                         <Grid
                             Background="Transparent"
-                            ColumnDefinitions="Auto,*,Auto"
+                            ColumnDefinitions="Auto,Auto,*,Auto"
                             ColumnSpacing="8"
                             Tapped="OverdueHeader_Tapped">
                             <FontIcon
@@ -673,39 +722,80 @@
                                 Foreground="{StaticResource SoftAmberInkBrush}"
                                 Glyph="&#xE706;"
                                 VerticalAlignment="Center" />
+                            <FontIcon
+                                x:Name="OverdueChevron"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{StaticResource SoftAmberInkBrush}"
+                                Glyph="&#xE76C;" />
                             <TextBlock
                                 x:Name="OverdueTitle"
-                                Grid.Column="1"
+                                Grid.Column="2"
                                 VerticalAlignment="Center"
                                 FontSize="13"
                                 FontWeight="SemiBold"
                                 Foreground="{StaticResource SoftAmberInkBrush}"
-                                Text="昨日未完成"
+                                Text="昨天未完成"
                                 TextWrapping="NoWrap"
                                 TextTrimming="CharacterEllipsis" />
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                            <StackPanel
+                                Grid.Column="3"
+                                MinWidth="240"
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="6">
                                 <Button
-                                    x:Name="MoveAllOverdueButton"
-                                    Padding="8,2"
+                                    x:Name="BringTodayButton"
                                     Click="MoveAllOverdue_Click"
-                                    Content="全部移到今天"
-                                    FontSize="11"
+                                    Content="带入今日"
+                                    Style="{StaticResource SoftChipButtonStyle}"
+                                    ToolTipService.ToolTip="把这些未完成项复制到今天。旧笔记的勾选不会改。" />
+                                <Button
+                                    x:Name="OverdueFilterButton"
+                                    MinWidth="112"
+                                    Click="OverdueFilter_Click"
+                                    Style="{StaticResource SoftChipButtonStyle}"
+                                    ToolTipService.ToolTip="按分类查看。全部会显示每一个未完成项。">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock
+                                            x:Name="OverdueFilterLabel"
+                                            MinWidth="32"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Foreground="{StaticResource SoftAmberInkBrush}"
+                                            Text="全部"
+                                            TextTrimming="None"
+                                            TextWrapping="NoWrap" />
+                                        <FontIcon
+                                            VerticalAlignment="Center"
+                                            FontSize="10"
+                                            Foreground="{StaticResource SoftAmberInkBrush}"
+                                            Glyph="&#xE70D;" />
+                                    </StackPanel>
+                                </Button>
+                                <Button
+                                    x:Name="DismissOverdueButton"
+                                    Width="28"
+                                    Height="28"
+                                    Padding="0"
+                                    AutomationProperties.Name="今天不再提示"
+                                    Click="DismissOverdue_Click"
                                     Style="{StaticResource QuietButtonStyle}"
-                                    Visibility="Collapsed" />
-                                <FontIcon
-                                    x:Name="OverdueChevron"
-                                    VerticalAlignment="Center"
-                                    FontSize="12"
-                                    Foreground="{StaticResource SoftAmberInkBrush}"
-                                    Glyph="&#xE76C;" />
+                                    ToolTipService.ToolTip="今天不再提示这些未完成项">
+                                    <FontIcon FontSize="11" Foreground="{StaticResource SoftAmberInkBrush}" Glyph="&#xE711;" />
+                                </Button>
                             </StackPanel>
                         </Grid>
                         <ListView
                             x:Name="OverdueList"
                             Grid.Row="1"
-                            MaxHeight="160"
+                            MaxHeight="180"
+                            Background="Transparent"
+                            BorderThickness="0"
                             IsItemClickEnabled="True"
                             ItemClick="OverdueList_ItemClick"
+                            ItemTemplate="{StaticResource OverdueItemTemplate}"
                             SelectionMode="None"
                             Visibility="Collapsed" />
                     </Grid>
@@ -816,19 +906,52 @@
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
-                        <TextBlock
-                            x:Name="EmptyHint"
-                            MaxWidth="360"
-                            Margin="24,56"
+                        <StackPanel
+                            x:Name="EmptyState"
+                            MaxWidth="420"
+                            Margin="8,36,8,12"
                             HorizontalAlignment="Center"
-                            FontSize="13"
-                            Foreground="{StaticResource SoftMutedInkBrush}"
-                            Text="还没有任务，在下面加一条要做的事"
-                            TextAlignment="Center"
-                            TextWrapping="Wrap"
-                            Visibility="Collapsed" />
+                            Spacing="10"
+                            Visibility="Collapsed">
+                            <TextBlock
+                                x:Name="EmptyHint"
+                                HorizontalAlignment="Center"
+                                FontSize="13"
+                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                Text="今天还没有任务"
+                                TextAlignment="Center"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                x:Name="TemplateLead"
+                                HorizontalAlignment="Center"
+                                FontSize="12"
+                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                Text="或点一个模板，写进当天笔记"
+                                TextAlignment="Center"
+                                Visibility="Collapsed" />
+                            <StackPanel x:Name="TemplateHost" Spacing="8" />
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
+                <Border
+                    x:Name="CelebrationBanner"
+                    Margin="0,8,0,0"
+                    Padding="16,8"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    Background="#F2FFFBF6"
+                    BorderBrush="{StaticResource SoftLineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    IsHitTestVisible="False"
+                    Opacity="0"
+                    Visibility="Collapsed">
+                    <TextBlock
+                        x:Name="CelebrationText"
+                        FontSize="13"
+                        Foreground="{StaticResource SoftInkBrush}"
+                        TextWrapping="NoWrap" />
+                </Border>
             </Grid>
 
             <Border

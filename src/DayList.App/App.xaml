@@ -66,6 +66,21 @@
                 <Setter Property="Foreground" Value="{StaticResource SoftMutedInkBrush}" />
             </Style>
 
+            <!-- Text chips size to their label. QuietButtonStyle's fixed 36px width clips 「全部」. -->
+            <Style x:Key="SoftChipButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+                <Setter Property="Background" Value="#FFFFFBF6" />
+                <Setter Property="BorderBrush" Value="#E6D3B8" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="14,5,12,5" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="30" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Foreground" Value="{StaticResource SoftAmberInkBrush}" />
+            </Style>
+
             <Style x:Key="SoftCategoryCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource SoftCardBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
