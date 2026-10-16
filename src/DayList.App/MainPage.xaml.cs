@@ -63,6 +63,7 @@ public sealed partial class MainPage : Page
     private int _celebrationToken;
     private int _celebrationHideToken;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _celebrationTimer;
+    private readonly ConfettiOverlay _confetti = new();
     private int _statusToken;
     private int _statusDismissToken;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _statusTimer;
@@ -2253,26 +2254,32 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        // Confetti only for the day. A finished category keeps the banner alone.
+        var confetti = ConfettiChoreography.ForDay(moment);
+
         // Checked is still on the stack. The banner was Collapsed, and the
         // day path also used to storyboard a ScaleTransform on SideProgressRing.
         // WinUI originates 0x800F1000 (Cannot resolve TargetName) for that
         // Begin(); the XAML dispatcher then fail-fasts with 0xC000027B before
         // the next frame, so the toast never appears. Wait until layout has
         // given the banner a slot, and pulse the host grid — never the ring.
+        // Confetti is a composition child of ConfettiHost, which is never
+        // collapsed and is not a storyboard target.
         var token = ++_celebrationToken;
         CelebrationText.Text = text;
         CelebrationBanner.Opacity = 0;
         CelebrationBanner.Visibility = Visibility.Visible;
         StopMomentStoryboards();
+        _confetti.Clear();
 
         var queued = DispatcherQueue.TryEnqueue(
             Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
-            () => StartCelebration(token, pulseHost));
+            () => StartCelebration(token, pulseHost, confetti));
         if (!queued)
-            ShowCelebrationTextOnly(token);
+            ShowCelebrationTextOnly(token, confetti);
     }
 
-    private void StartCelebration(int token, bool pulseHost)
+    private void StartCelebration(int token, bool pulseHost, bool confetti)
     {
         if (_closed || token != _celebrationToken || CelebrationBanner is null)
             return;
@@ -2288,17 +2295,20 @@ public sealed partial class MainPage : Page
 
         if (!CelebrationBanner.IsLoaded || !TryRestart(StoryboardResource("CelebrationStoryboard")))
         {
-            ShowCelebrationTextOnly(token);
+            ShowCelebrationTextOnly(token, confetti);
             return;
         }
 
         if (pulseHost && SideProgressHost is { IsLoaded: true })
             TryRestart(StoryboardResource("ProgressPulseStoryboard"));
 
+        if (confetti)
+            PlayConfetti();
+
         ArmCelebrationHide(token);
     }
 
-    private void ShowCelebrationTextOnly(int token)
+    private void ShowCelebrationTextOnly(int token, bool confetti)
     {
         if (_closed || token != _celebrationToken || CelebrationBanner is null)
             return;
@@ -2306,7 +2316,16 @@ public sealed partial class MainPage : Page
         StopMomentStoryboards();
         CelebrationBanner.Opacity = 1;
         CelebrationBanner.Visibility = Visibility.Visible;
+        if (confetti)
+            PlayConfetti();
         ArmCelebrationHide(token);
+    }
+
+    private void PlayConfetti()
+    {
+        if (ConfettiHost is null)
+            return;
+        _confetti.Play(ConfettiHost, ConfettiChoreography.Pieces(Environment.TickCount));
     }
 
     private void ArmCelebrationHide(int token)
@@ -2322,6 +2341,7 @@ public sealed partial class MainPage : Page
                 if (_closed || _celebrationHideToken != _celebrationToken || CelebrationBanner is null)
                     return;
                 StopMomentStoryboards();
+                _confetti.Clear();
                 CelebrationBanner.Opacity = 0;
                 CelebrationBanner.Visibility = Visibility.Collapsed;
             };
@@ -2456,6 +2476,7 @@ public sealed partial class MainPage : Page
         _celebrationToken++;
         _celebrationTimer?.Stop();
         StopMomentStoryboards();
+        _confetti.Clear();
         if (CelebrationBanner is null)
             return;
         CelebrationBanner.Opacity = 0;
