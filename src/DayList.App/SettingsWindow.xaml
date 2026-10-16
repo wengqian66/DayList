@@ -75,7 +75,7 @@
                             <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="默认 Ctrl+Shift+D：显示窗口并聚焦添加框。支持 Ctrl/Shift/Alt + 字母或 F1–F12。" TextWrapping="Wrap" />
                             <CheckBox x:Name="ReminderSoundBox" Content="提醒时播放提示音" Foreground="{StaticResource SoftInkBrush}" />
                             <CheckBox x:Name="ReminderToastOnlyBox" Content="只用系统通知，不弹出窗口" Foreground="{StaticResource SoftInkBrush}" />
-                            <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="任务行右侧铃铛可滚动选择时间。提醒需要 DayList 正在运行（最小化到托盘即可）。退出或重启后系统不会补响。再次打开时，12 小时内错过的会补一次。" TextWrapping="Wrap" />
+                            <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="任务行右侧铃铛可滚动选择时间。到点默认在屏幕右下角弹出小卡片，不把主窗口拉到前面。勾选上面一项则只发系统通知。提醒需要 DayList 正在运行（最小化到托盘即可）。退出或重启后系统不会补响。再次打开时，12 小时内错过的会补一次。" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
 
