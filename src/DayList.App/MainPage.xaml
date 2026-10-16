@@ -275,8 +275,8 @@
         <DataTemplate x:Key="InspirationGlanceTemplate" x:DataType="local:InspirationGlance">
             <Button
                 MinWidth="0"
-                MinHeight="32"
-                Padding="2,3"
+                MinHeight="36"
+                Padding="0,1"
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Stretch"
                 AutomationProperties.Name="编辑灵感"
@@ -285,14 +285,26 @@
                 Click="Inspiration_Click"
                 CornerRadius="8"
                 ToolTipService.ToolTip="点开后可以修改或删除">
-                <Grid ColumnDefinitions="48,*" ColumnSpacing="8">
+                <Grid MinHeight="32" ColumnDefinitions="18,44,*" ColumnSpacing="8">
+                    <Rectangle
+                        Width="2"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Stretch"
+                        Fill="{StaticResource SoftLineBrush}" />
+                    <Ellipse
+                        Width="8"
+                        Height="8"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Fill="{StaticResource SoftAmberInkBrush}" />
                     <TextBlock
+                        Grid.Column="1"
                         VerticalAlignment="Center"
                         FontSize="12"
                         Foreground="{StaticResource SoftMutedInkBrush}"
                         Text="{x:Bind TimeLabel, Mode=OneTime}" />
                     <TextBlock
-                        Grid.Column="1"
+                        Grid.Column="2"
                         VerticalAlignment="Center"
                         FontSize="13"
                         Foreground="{StaticResource SoftInkBrush}"
@@ -480,10 +492,20 @@
                         </Grid>
                     </Button>
                     <Button
+                        x:Name="NavFlowButton"
+                        Click="NavFlow_Click"
+                        Style="{StaticResource SoftNavButtonStyle}"
+                        ToolTipService.ToolTip="按时间看这一天和近 7 天的灵感。仍写在每天笔记的灵感小节，不进月报。">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <FontIcon FontSize="15" Glyph="&#xE81C;" />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="灵感流" />
+                        </Grid>
+                    </Button>
+                    <Button
                         x:Name="InspirationButton"
                         Click="Inspiration_Click"
                         Style="{StaticResource SoftNavButtonStyle}"
-                        ToolTipService.ToolTip="今日任务上方会列出当天已保存的灵感。点这里或点某一条，可以添加、修改或删除。不是待办，不进月报，也不参与生成计划。">
+                        ToolTipService.ToolTip="今日卡片上按时间列出当天灵感。点「时间线」看近几天。点这里或点某一条，可以添加、修改或删除。不是待办，不进月报。">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                             <FontIcon FontSize="15" Glyph="&#xEA80;" />
                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="灵感" />
@@ -555,7 +577,7 @@
         <Grid Grid.Column="1">
         <Grid
             Padding="22,14,22,16"
-            RowDefinitions="Auto,Auto,*,Auto"
+            RowDefinitions="Auto,Auto,Auto,*,Auto"
             RowSpacing="10">
             <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="2">
                 <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
@@ -666,9 +688,89 @@
                     ToolTipService.ToolTip="在资源管理器中打开库">
                     <FontIcon FontSize="16" Glyph="&#xE8B7;" />
                 </Button>
-</Grid>
+            </Grid>
 
-            <StackPanel Grid.Row="1" Spacing="8">
+            <Border
+                x:Name="FocusCard"
+                Grid.Row="1"
+                Padding="14,10"
+                Background="{StaticResource SoftCardBrush}"
+                BorderBrush="{StaticResource SoftLineBrush}"
+                BorderThickness="1"
+                CornerRadius="16"
+                ToolTipService.ToolTip="轻量番茄钟。默认 25 分钟专注、5 分钟休息。到点在屏幕左下角提示，没有声音，也不打断任务提醒。">
+                <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
+                        <StackPanel VerticalAlignment="Center" Spacing="0">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SoftInkBrush}"
+                                Text="专注" />
+                            <TextBlock
+                                x:Name="FocusPhaseText"
+                                FontSize="11"
+                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                Text="待开始" />
+                        </StackPanel>
+                        <TextBlock
+                            x:Name="FocusClock"
+                            Grid.Column="1"
+                            MinWidth="84"
+                            VerticalAlignment="Center"
+                            FontFamily="Cascadia Mono, Consolas"
+                            FontSize="26"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource SoftInkBrush}"
+                            Text="25:00" />
+                        <StackPanel
+                            Grid.Column="3"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="6">
+                            <Button
+                                x:Name="FocusPrimaryButton"
+                                HorizontalAlignment="Left"
+                                Click="FocusPrimary_Click"
+                                Content="开始"
+                                Style="{StaticResource SoftChipButtonStyle}" />
+                            <Button
+                                x:Name="FocusResetButton"
+                                Click="FocusReset_Click"
+                                Content="重置"
+                                Style="{StaticResource CategoryChipStyle}" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel
+                        Grid.Row="1"
+                        Orientation="Horizontal"
+                        Spacing="6">
+                        <Button
+                            x:Name="FocusPreset25"
+                            Click="FocusPreset_Click"
+                            Content="25/5"
+                            Style="{StaticResource CategoryChipStyle}"
+                            Tag="25,5"
+                            ToolTipService.ToolTip="经典 25 分钟，休息 5 分钟" />
+                        <Button
+                            x:Name="FocusPreset15"
+                            Click="FocusPreset_Click"
+                            Content="15/3"
+                            Style="{StaticResource CategoryChipStyle}"
+                            Tag="15,3"
+                            ToolTipService.ToolTip="短一点" />
+                        <Button
+                            x:Name="FocusPreset50"
+                            Click="FocusPreset_Click"
+                            Content="50/10"
+                            Style="{StaticResource CategoryChipStyle}"
+                            Tag="50,10"
+                            ToolTipService.ToolTip="长一点" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Row="2" Spacing="8">
                 <Border
                     x:Name="SyncCapsule"
                     HorizontalAlignment="Left"
@@ -811,7 +913,7 @@
                 </Border>
             </StackPanel>
 
-            <Grid x:Name="WorkBody" Grid.Row="2" Visibility="Collapsed">
+            <Grid x:Name="WorkBody" Grid.Row="3" Visibility="Collapsed">
                 <ScrollViewer
                     HorizontalScrollBarVisibility="Disabled"
                     HorizontalScrollMode="Disabled"
@@ -829,7 +931,7 @@
                                 CornerRadius="16"
                                 Padding="16,12,14,8">
                                 <StackPanel Spacing="2">
-                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
                                         <Ellipse
                                             Width="8"
                                             Height="8"
@@ -853,8 +955,17 @@
                                                 Foreground="{StaticResource SoftMutedInkBrush}" />
                                         </StackPanel>
                                         <Button
-                                            x:Name="InspirationAddButton"
+                                            x:Name="InspirationTimelineButton"
                                             Grid.Column="2"
+                                            VerticalAlignment="Center"
+                                            AutomationProperties.Name="灵感流时间线"
+                                            Click="NavFlow_Click"
+                                            Content="时间线"
+                                            Style="{StaticResource CategoryChipStyle}"
+                                            ToolTipService.ToolTip="按时间看这一天和近 7 天" />
+                                        <Button
+                                            x:Name="InspirationAddButton"
+                                            Grid.Column="3"
                                             VerticalAlignment="Center"
                                             AutomationProperties.Name="添加灵感"
                                             Click="Inspiration_Click"
@@ -885,7 +996,7 @@
                                     </Grid>
                                     <ScrollViewer
                                         x:Name="InspirationGlanceHost"
-                                        MaxHeight="168"
+                                        MaxHeight="200"
                                         HorizontalScrollBarVisibility="Disabled"
                                         HorizontalScrollMode="Disabled"
                                         VerticalScrollBarVisibility="Auto"
@@ -904,6 +1015,41 @@
                                 </StackPanel>
                             </Border>
                         </local:SoftCard>
+                        <StackPanel
+                            x:Name="InspirationFlowPanel"
+                            Spacing="10"
+                            Visibility="Collapsed">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <StackPanel Spacing="2">
+                                    <TextBlock
+                                        FontSize="18"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource SoftInkBrush}"
+                                        Text="灵感流" />
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{StaticResource SoftMutedInkBrush}"
+                                        Text="近 7 天，按时间从早到晚。记在每天笔记的灵感小节，不进月报。"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="记一句灵感"
+                                    Click="Inspiration_Click"
+                                    Content="记一句"
+                                    Style="{StaticResource CategoryChipStyle}"
+                                    ToolTipService.ToolTip="写进这一天的灵感小节" />
+                            </Grid>
+                            <TextBlock
+                                x:Name="InspirationFlowEmpty"
+                                FontSize="13"
+                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                Text="这几天还没有灵感。点「记一句」写进这一天。"
+                                TextWrapping="Wrap"
+                                Visibility="Collapsed" />
+                            <StackPanel x:Name="InspirationFlowDays" Spacing="12" />
+                        </StackPanel>
                         <ItemsControl
                             x:Name="CategoryCards"
                             ItemTemplate="{StaticResource CategoryCardTemplate}">
@@ -963,7 +1109,7 @@
 
             <Border
                 x:Name="Composer"
-                Grid.Row="3"
+                Grid.Row="4"
                 Margin="0,4,0,0"
                 MinHeight="48"
                 Style="{StaticResource SoftPillComposerStyle}"
@@ -1008,7 +1154,7 @@
 
             <StackPanel
                 x:Name="WelcomePanel"
-                Grid.Row="1"
+                Grid.Row="2"
                 Grid.RowSpan="3"
                 MaxWidth="440"
                 Margin="24"
