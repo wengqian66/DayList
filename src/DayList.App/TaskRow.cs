@@ -174,22 +174,23 @@ public static class CategoryAccent
 {
     private static readonly (string Name, byte R, byte G, byte B, string Glyph)[] Known =
     {
-        ("工作", 0x00, 0x7A, 0xFF, "\uE821"),
-        ("学习", 0x58, 0x56, 0xD6, "\uE8F1"),
-        ("生活", 0xFF, 0x95, 0x00, "\uE80F"),
-        ("健康", 0x34, 0xC7, 0x59, "\uE95E"),
-        ("运动", 0xFF, 0x2D, 0x55, "\uE95E"),
+        ("工作", 0x5B, 0x9B, 0xD5, "\uE821"),
+        ("学习", 0x6B, 0xB5, 0x6C, "\uE8F1"),
+        ("生活", 0x9B, 0x7E, 0xBD, "\uE80F"),
+        ("健康", 0xE8, 0x8B, 0x7D, "\uE95E"),
+        ("运动", 0xE8, 0x8B, 0x7D, "\uE95E"),
     };
 
     private static readonly (byte R, byte G, byte B)[] Palette =
     {
-        (0x00, 0x7A, 0xFF),
-        (0xAF, 0x52, 0xDE),
-        (0xFF, 0x2D, 0x55),
-        (0xFF, 0x95, 0x00),
-        (0x34, 0xC7, 0x59),
-        (0x58, 0x56, 0xD6),
-        (0x8E, 0x8E, 0x93),
+        (0x5B, 0x9B, 0xD5),
+        (0x6B, 0xB5, 0x6C),
+        (0x9B, 0x7E, 0xBD),
+        (0xE8, 0xA0, 0x6F),
+        (0x5D, 0xAE, 0xC8),
+        (0xD4, 0x8B, 0xA0),
+        (0x8F, 0xA3, 0x6A),
+        (0x7A, 0x8F, 0xC7),
     };
 
     public static Color For(string? category)
@@ -202,7 +203,7 @@ public static class CategoryAccent
         }
 
         if (DayTaskCategory.IsUncategorized(category))
-            return Color.FromArgb(255, 0x8E, 0x8E, 0x93);
+            return Color.FromArgb(255, 0xA8, 0xA0, 0x96);
 
         unchecked
         {
@@ -238,17 +239,17 @@ public static class CategoryAccent
         return new SolidColorBrush(Color.FromArgb(48, c.R, c.G, c.B));
     }
 
-    /// <summary>Card faces stay white. Category color is only the dot, ring, and check.</summary>
+    /// <summary>Soft pastel wash for the whole category card body.</summary>
     public static SolidColorBrush CardFill(string? category)
     {
-        _ = category;
-        return new SolidColorBrush(Color.FromArgb(255, 0xFF, 0xFF, 0xFF));
+        var c = For(category);
+        return new SolidColorBrush(Color.FromArgb(56, c.R, c.G, c.B));
     }
 
     public static SolidColorBrush HeaderWash(string? category)
     {
-        _ = category;
-        return new SolidColorBrush(Color.FromArgb(0, 0xFF, 0xFF, 0xFF));
+        var c = For(category);
+        return new SolidColorBrush(Color.FromArgb(72, c.R, c.G, c.B));
     }
 }
 
@@ -319,7 +320,7 @@ public sealed class CategoryCardModel : INotifyPropertyChanged
         }
     }
 
-    public string FractionText => TotalCount == 0 ? "0/0" : $"{DoneCount}/{TotalCount}";
+    public string FractionText => TotalCount == 0 ? "0 / 0" : $"{DoneCount} / {TotalCount}";
 
     /// <summary>Item count for the completed list. Not a progress score.</summary>
     public string CountText => TotalCount == 0 ? "" : $"{TotalCount} 项";

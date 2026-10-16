@@ -2,7 +2,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Input;
 using Windows.System;
 using Windows.UI.Core;
@@ -19,7 +18,6 @@ public sealed partial class SettingsWindow : Window
         InitializeComponent();
         Title = "设置";
         WindowChrome.Prepare(this, 560, 860, 480, 620);
-        Loaded += OnShellLoaded;
         _seed = current.Copy();
         Fill(current.Copy());
     }
@@ -252,20 +250,4 @@ public sealed partial class SettingsWindow : Window
 
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
-
-    private void OnShellLoaded(object sender, RoutedEventArgs e)
-    {
-        Loaded -= OnShellLoaded;
-        WindowChrome.Attach(this, ShellRoot, TitleBar, WindowOutline, TrafficLights, maximized =>
-            ToolTipService.SetToolTip(ZoomLight, maximized ? "还原" : "最大化"));
-        if (WindowChrome.BlurActive)
-            ShellRoot.Background = new SolidColorBrush(Windows.UI.Color.FromArgb(0, 0xF5, 0xF5, 0xF7));
-        MacScroll.Attach(SettingsScroller);
-    }
-
-    private void ChromeClose_Click(object sender, RoutedEventArgs e) => Close();
-
-    private void ChromeMin_Click(object sender, RoutedEventArgs e) => WindowChrome.Minimize(this);
-
-    private void ChromeZoom_Click(object sender, RoutedEventArgs e) => WindowChrome.ToggleZoom(this);
 }

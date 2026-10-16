@@ -9,17 +9,15 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <Color x:Key="SoftCreamColor">#FFF5F5F7</Color>
-            <Color x:Key="SoftCreamDeepColor">#FFE8E8ED</Color>
-            <Color x:Key="SoftCardColor">#FFFFFFFF</Color>
-            <Color x:Key="SoftInkColor">#FF1D1D1F</Color>
-            <Color x:Key="SoftMutedInkColor">#993C3C43</Color>
-            <Color x:Key="SoftLineColor">#1A000000</Color>
-            <Color x:Key="SoftAmberColor">#FFFFF4E8</Color>
-            <Color x:Key="SoftAmberInkColor">#FFC93400</Color>
-            <Color x:Key="SoftNavSelectedColor">#1A007AFF</Color>
-            <Color x:Key="MacBlueColor">#FF007AFF</Color>
-            <Color x:Key="MacFieldColor">#FFE8E8ED</Color>
+            <Color x:Key="SoftCreamColor">#FFF7F2EA</Color>
+            <Color x:Key="SoftCreamDeepColor">#FFF0E8DC</Color>
+            <Color x:Key="SoftCardColor">#FFFFFBF6</Color>
+            <Color x:Key="SoftInkColor">#FF3D3429</Color>
+            <Color x:Key="SoftMutedInkColor">#FF7A6F62</Color>
+            <Color x:Key="SoftLineColor">#FFE4D8C8</Color>
+            <Color x:Key="SoftAmberColor">#FFF3E0C4</Color>
+            <Color x:Key="SoftAmberInkColor">#FF8A5A20</Color>
+            <Color x:Key="SoftNavSelectedColor">#FFE7D9C4</Color>
 
             <SolidColorBrush x:Key="SoftCreamBrush" Color="{StaticResource SoftCreamColor}" />
             <SolidColorBrush x:Key="SoftCreamDeepBrush" Color="{StaticResource SoftCreamDeepColor}" />
@@ -30,19 +28,6 @@
             <SolidColorBrush x:Key="SoftAmberBrush" Color="{StaticResource SoftAmberColor}" />
             <SolidColorBrush x:Key="SoftAmberInkBrush" Color="{StaticResource SoftAmberInkColor}" />
             <SolidColorBrush x:Key="SoftNavSelectedBrush" Color="{StaticResource SoftNavSelectedColor}" />
-            <SolidColorBrush x:Key="MacBlueBrush" Color="{StaticResource MacBlueColor}" />
-            <SolidColorBrush x:Key="MacFieldBrush" Color="{StaticResource MacFieldColor}" />
-
-            <x:Double x:Key="ScrollBarSize">6</x:Double>
-            <SolidColorBrush x:Key="ScrollBarThumbFill" Color="#66000000" />
-            <SolidColorBrush x:Key="ScrollBarThumbFillPointerOver" Color="#99000000" />
-            <SolidColorBrush x:Key="ScrollBarThumbFillPressed" Color="#B3000000" />
-            <SolidColorBrush x:Key="ScrollBarTrackFill" Color="#00000000" />
-            <SolidColorBrush x:Key="ScrollBarPanningThumbBackground" Color="#66000000" />
-
-            <Style TargetType="FontIcon">
-                <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
-            </Style>
 
             <CornerRadius x:Key="CardCornerRadius">16</CornerRadius>
             <CornerRadius x:Key="PillCornerRadius">22</CornerRadius>
@@ -64,31 +49,30 @@
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Padding" Value="4,6" />
-                <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI Variable, Segoe UI" />
-                <Setter Property="FontSize" Value="15" />
-                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="FontSize" Value="14" />
                 <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="MinHeight" Value="34" />
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
             </Style>
 
             <Style x:Key="CategoryChipStyle" TargetType="Button">
-                <Setter Property="Background" Value="{StaticResource MacFieldBrush}" />
+                <Setter Property="Background" Value="#F0E8DCC8" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Padding" Value="8,2" />
                 <Setter Property="MinWidth" Value="0" />
                 <Setter Property="MinHeight" Value="24" />
-                <Setter Property="FontSize" Value="12" />
-                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="CornerRadius" Value="8" />
                 <Setter Property="Foreground" Value="{StaticResource SoftMutedInkBrush}" />
             </Style>
 
             <Style x:Key="SoftCategoryCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource SoftCardBrush}" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="CornerRadius" Value="12" />
-                <Setter Property="Padding" Value="18,16" />
-                <Setter Property="Margin" Value="0" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0,0,0,14" />
             </Style>
 
             <Style x:Key="SoftNavButtonStyle" TargetType="Button">
@@ -114,13 +98,14 @@
                 <Setter Property="MaxWidth" Value="160" />
                 <Setter Property="VerticalAlignment" Value="Center" />
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
-                <Setter Property="SelectionHighlightColor" Value="#66007AFF" />
+                <Setter Property="SelectionHighlightColor" Value="#665B9BD5" />
             </Style>
             <Style x:Key="SoftSettingsCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource SoftCardBrush}" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="CornerRadius" Value="12" />
-                <Setter Property="Padding" Value="18,16" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="16,14" />
             </Style>
             <Style x:Key="SoftSettingsSectionTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="15" />
@@ -132,36 +117,19 @@
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
             </Style>
             <Style x:Key="SoftSettingsFieldStyle" TargetType="TextBox">
-                <Setter Property="Background" Value="{StaticResource MacFieldBrush}" />
-                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="Background" Value="#F2FFFBF6" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="10" />
                 <Setter Property="Padding" Value="10,8" />
-                <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI Variable, Segoe UI" />
-                <Setter Property="FontSize" Value="14" />
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
-                <Setter Property="Resources">
-                    <Setter.Value>
-                        <ResourceDictionary>
-                            <SolidColorBrush x:Key="TextControlBackground" Color="#FFE8E8ED" />
-                            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#FFE8E8ED" />
-                            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#FFE8E8ED" />
-                            <SolidColorBrush x:Key="TextControlBorderBrush" Color="#00000000" />
-                            <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#00000000" />
-                            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#FF007AFF" />
-                            <SolidColorBrush x:Key="TextControlForeground" Color="#FF1D1D1F" />
-                            <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#FF1D1D1F" />
-                            <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#993C3C43" />
-                        </ResourceDictionary>
-                    </Setter.Value>
-                </Setter>
             </Style>
 
             <!-- Soft overlays: dialogs, flyouts, calendar, infobars -->
             <SolidColorBrush x:Key="SoftDialogScrimBrush" Color="#66000000" />
-            <SolidColorBrush x:Key="SoftAccentBrush" Color="#FF007AFF" />
+            <SolidColorBrush x:Key="SoftAccentBrush" Color="#FF5B9BD5" />
             <SolidColorBrush x:Key="SoftCalendarChromeBrush" Color="#FFE0D2C0" />
-            <SolidColorBrush x:Key="SoftCalendarDayBrush" Color="#FFF5F5F7" />
+            <SolidColorBrush x:Key="SoftCalendarDayBrush" Color="#FFF7F2EA" />
             <SolidColorBrush x:Key="SoftInfoBarSuccessBrush" Color="#FFE5F0D8" />
             <SolidColorBrush x:Key="SoftInfoBarWarningBrush" Color="#FFF3E0C4" />
             <SolidColorBrush x:Key="SoftInfoBarErrorBrush" Color="#FFF3D6D2" />
@@ -242,59 +210,44 @@
             <Style TargetType="InfoBar" BasedOn="{StaticResource SoftInfoBarStyle}" />
 
             <Style x:Key="SoftPasswordBoxStyle" TargetType="PasswordBox">
-                <Setter Property="Background" Value="{StaticResource MacFieldBrush}" />
-                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="Background" Value="#F2FFFBF6" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="10" />
                 <Setter Property="Padding" Value="10,8" />
-                <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI Variable, Segoe UI" />
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
-                <Setter Property="Resources">
-                    <Setter.Value>
-                        <ResourceDictionary>
-                            <SolidColorBrush x:Key="TextControlBackground" Color="#FFE8E8ED" />
-                            <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#FFE8E8ED" />
-                            <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#FFE8E8ED" />
-                            <SolidColorBrush x:Key="TextControlBorderBrush" Color="#00000000" />
-                            <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#00000000" />
-                            <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#FF007AFF" />
-                            <SolidColorBrush x:Key="TextControlForeground" Color="#FF1D1D1F" />
-                            <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#993C3C43" />
-                        </ResourceDictionary>
-                    </Setter.Value>
-                </Setter>
             </Style>
 
 
-            <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#FFF5F5F7" />
-            <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#FFE5E5EA" />
-            <SolidColorBrush x:Key="MenuFlyoutItemBackground" Color="#FFF5F5F7" />
-            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="#FFE8E8ED" />
-            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="#FFE5E5EA" />
-            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundFocused" Color="#FFE8E8ED" />
-            <SolidColorBrush x:Key="MenuFlyoutItemForeground" Color="#FF1D1D1F" />
-            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPointerOver" Color="#FF1D1D1F" />
-            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPressed" Color="#FF1D1D1F" />
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackground" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundFocused" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="MenuFlyoutItemForeground" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPointerOver" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPressed" Color="#FF3D3429" />
 
             <!-- Force ComboBox popup off acrylic white -->
-            <SolidColorBrush x:Key="AcrylicInAppFillColorDefaultBrush" Color="#FFF5F5F7" />
-            <SolidColorBrush x:Key="AcrylicBackgroundFillColorDefaultBrush" Color="#FFF5F5F7" />
-            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FFF5F5F7" />
-            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerOver" Color="#FFE8E8ED" />
-            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerPressed" Color="#FFE5E5EA" />
-            <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#FFE5E5EA" />
-            <SolidColorBrush x:Key="ComboBoxDropDownForeground" Color="#FF1D1D1F" />
-            <SolidColorBrush x:Key="ComboBoxItemBackground" Color="#FFF5F5F7" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#FFE8E8ED" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="#FFE5E5EA" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#FFE8E8ED" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#FFDCDCE2" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedUnfocused" Color="#FFE8E8ED" />
-            <SolidColorBrush x:Key="ComboBoxItemForeground" Color="#FF1D1D1F" />
-            <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="#FF1D1D1F" />
-            <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#FF1D1D1F" />
-            <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedUnfocused" Color="#FF1D1D1F" />
-            <SolidColorBrush x:Key="ComboBoxItemPillFillBrush" Color="#FF007AFF" />
+            <SolidColorBrush x:Key="AcrylicInAppFillColorDefaultBrush" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="AcrylicBackgroundFillColorDefaultBrush" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerOver" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerPressed" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="ComboBoxDropDownForeground" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemBackground" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="#FFE4D8C8" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#FFE8DCC8" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedUnfocused" Color="#FFF0E8DC" />
+            <SolidColorBrush x:Key="ComboBoxItemForeground" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedUnfocused" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="ComboBoxItemPillFillBrush" Color="#FF5B9BD5" />
 
             <Style x:Key="SoftComboBoxItemStyle" TargetType="ComboBoxItem" BasedOn="{StaticResource DefaultComboBoxItemStyle}">
                 <Setter Property="Background" Value="{StaticResource SoftCreamBrush}" />
@@ -306,31 +259,19 @@
             </Style>
 
             <Style x:Key="SoftComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
-                <Setter Property="Background" Value="{StaticResource MacFieldBrush}" />
-                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="Background" Value="{StaticResource SoftCreamBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="CornerRadius" Value="14" />
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
                 <Setter Property="RequestedTheme" Value="Light" />
                 <Setter Property="ItemContainerStyle" Value="{StaticResource SoftComboBoxItemStyle}" />
-                <Setter Property="Resources">
-                    <Setter.Value>
-                        <ResourceDictionary>
-                            <SolidColorBrush x:Key="ComboBoxBackground" Color="#FFE8E8ED" />
-                            <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#FFE8E8ED" />
-                            <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#FFE8E8ED" />
-                            <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#00000000" />
-                            <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#00000000" />
-                            <SolidColorBrush x:Key="ComboBoxBorderBrushFocused" Color="#FF007AFF" />
-                        </ResourceDictionary>
-                    </Setter.Value>
-                </Setter>
             </Style>
 
 
-            <SolidColorBrush x:Key="SoftPinCheckedBrush" Color="#1A007AFF" />
-            <SolidColorBrush x:Key="SoftPinCheckedBorderBrush" Color="#66007AFF" />
-            <SolidColorBrush x:Key="SoftPinCheckedForegroundBrush" Color="#FF007AFF" />
+            <SolidColorBrush x:Key="SoftPinCheckedBrush" Color="#FFE8DCC8" />
+            <SolidColorBrush x:Key="SoftPinCheckedBorderBrush" Color="#FFC4B09A" />
+            <SolidColorBrush x:Key="SoftPinCheckedForegroundBrush" Color="#FF6B5344" />
 
             <Style x:Key="SoftPinToggleStyle" TargetType="ToggleButton">
                 <Setter Property="Background" Value="Transparent" />
@@ -388,152 +329,12 @@
             </Style>
 
             <Style x:Key="SoftPillComposerStyle" TargetType="Border">
-                <Setter Property="Background" Value="{StaticResource MacFieldBrush}" />
-                <Setter Property="BorderBrush" Value="Transparent" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Background" Value="{StaticResource SoftCardBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="24" />
                 <Setter Property="Padding" Value="14,8" />
             </Style>
-
-            <Style x:Key="TrafficLightStyle" TargetType="Button">
-                <Setter Property="Width" Value="20" />
-                <Setter Property="Height" Value="20" />
-                <Setter Property="MinWidth" Value="0" />
-                <Setter Property="MinHeight" Value="0" />
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="Background" Value="#FF5F57" />
-                <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
-                <Setter Property="FontSize" Value="9" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Grid Width="20" Height="20" Background="Transparent">
-                                <Ellipse
-                                    x:Name="Dot"
-                                    Width="12"
-                                    Height="12"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Fill="{TemplateBinding Background}" />
-                                <TextBlock
-                                    x:Name="Glyph"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI Variable Text, Segoe UI"
-                                    FontSize="9"
-                                    FontWeight="SemiBold"
-                                    Foreground="#CC1D1D1F"
-                                    IsHitTestVisible="False"
-                                    Opacity="0"
-                                    Text="{TemplateBinding Content}" />
-                                <VisualStateManager.VisualStateGroups>
-                                    <VisualStateGroup x:Name="CommonStates">
-                                        <VisualState x:Name="Normal" />
-                                        <VisualState x:Name="PointerOver">
-                                            <VisualState.Setters>
-                                                <Setter Target="Glyph.Opacity" Value="1" />
-                                            </VisualState.Setters>
-                                        </VisualState>
-                                        <VisualState x:Name="Pressed">
-                                            <VisualState.Setters>
-                                                <Setter Target="Glyph.Opacity" Value="1" />
-                                                <Setter Target="Dot.Opacity" Value="0.72" />
-                                            </VisualState.Setters>
-                                        </VisualState>
-                                        <VisualState x:Name="Disabled">
-                                            <VisualState.Setters>
-                                                <Setter Target="Dot.Opacity" Value="0.35" />
-                                            </VisualState.Setters>
-                                        </VisualState>
-                                    </VisualStateGroup>
-                                </VisualStateManager.VisualStateGroups>
-                            </Grid>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
-            <Style x:Key="MacCheckBoxStyle" TargetType="CheckBox" BasedOn="{StaticResource DefaultCheckBoxStyle}">
-                <Setter Property="MinWidth" Value="0" />
-                <Setter Property="MinHeight" Value="0" />
-                <Setter Property="Padding" Value="0" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="CheckBox">
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <Grid Width="18" Height="18" VerticalAlignment="Center">
-                                    <Ellipse
-                                        x:Name="Ring"
-                                        Stroke="#59000000"
-                                        StrokeThickness="1.25"
-                                        Fill="Transparent" />
-                                    <Ellipse
-                                        x:Name="Fill"
-                                        Fill="#FF007AFF"
-                                        Opacity="0"
-                                        RenderTransformOrigin="0.5,0.5">
-                                        <Ellipse.RenderTransform>
-                                            <ScaleTransform x:Name="FillScale" ScaleX="0.7" ScaleY="0.7" />
-                                        </Ellipse.RenderTransform>
-                                    </Ellipse>
-                                    <FontIcon
-                                        x:Name="Mark"
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                                        FontSize="9"
-                                        Foreground="White"
-                                        Glyph="&#xE73E;"
-                                        Opacity="0" />
-                                </Grid>
-                                <ContentPresenter VerticalAlignment="Center" />
-                                <VisualStateManager.VisualStateGroups>
-                                    <VisualStateGroup x:Name="CommonStates">
-                                        <VisualState x:Name="Normal" />
-                                        <VisualState x:Name="PointerOver">
-                                            <VisualState.Setters>
-                                                <Setter Target="Ring.Stroke" Value="#99000000" />
-                                            </VisualState.Setters>
-                                        </VisualState>
-                                        <VisualState x:Name="Pressed" />
-                                        <VisualState x:Name="Disabled">
-                                            <VisualState.Setters>
-                                                <Setter Target="Ring.Opacity" Value="0.4" />
-                                                <Setter Target="Fill.Opacity" Value="0.4" />
-                                            </VisualState.Setters>
-                                        </VisualState>
-                                    </VisualStateGroup>
-                                    <VisualStateGroup x:Name="CheckStates">
-                                        <VisualState x:Name="Unchecked">
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="Fill" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
-                                                <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
-                                                <DoubleAnimation Storyboard.TargetName="Ring" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2" />
-                                                <DoubleAnimation Storyboard.TargetName="FillScale" Storyboard.TargetProperty="ScaleX" To="0.7" Duration="0:0:0.2" EnableDependentAnimation="True" />
-                                                <DoubleAnimation Storyboard.TargetName="FillScale" Storyboard.TargetProperty="ScaleY" To="0.7" Duration="0:0:0.2" EnableDependentAnimation="True" />
-                                            </Storyboard>
-                                        </VisualState>
-                                        <VisualState x:Name="Checked">
-                                            <Storyboard>
-                                                <DoubleAnimation Storyboard.TargetName="Fill" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2" />
-                                                <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2" />
-                                                <DoubleAnimation Storyboard.TargetName="Ring" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2" />
-                                                <DoubleAnimation Storyboard.TargetName="FillScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.2" EnableDependentAnimation="True" />
-                                                <DoubleAnimation Storyboard.TargetName="FillScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.2" EnableDependentAnimation="True" />
-                                            </Storyboard>
-                                        </VisualState>
-                                        <VisualState x:Name="Indeterminate" />
-                                    </VisualStateGroup>
-                                </VisualStateManager.VisualStateGroups>
-                            </StackPanel>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-            <Style TargetType="CheckBox" BasedOn="{StaticResource MacCheckBoxStyle}" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>
