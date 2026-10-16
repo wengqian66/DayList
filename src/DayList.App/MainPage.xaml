@@ -471,7 +471,7 @@
                         x:Name="NavDoneButton"
                         Click="NavDone_Click"
                         Style="{StaticResource SoftNavButtonStyle}"
-                        ToolTipService.ToolTip="只看已经勾掉的任务，按分类排成列表，没有进度环。">
+                        ToolTipService.ToolTip="只看已勾选的任务。">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                             <FontIcon FontSize="15" Glyph="&#xE73E;" />
                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="已完成" />
@@ -495,7 +495,7 @@
                         x:Name="NavFlowButton"
                         Click="NavFlow_Click"
                         Style="{StaticResource SoftNavButtonStyle}"
-                        ToolTipService.ToolTip="按时间看这一天和近 7 天的灵感。仍写在每天笔记的灵感小节，不进月报。">
+                        ToolTipService.ToolTip="按时间看这一天和近 7 天。">
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                             <FontIcon FontSize="15" Glyph="&#xE81C;" />
                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="灵感流" />
@@ -505,7 +505,7 @@
                         x:Name="InspirationButton"
                         Click="Inspiration_Click"
                         Style="{StaticResource SoftNavButtonStyle}"
-                        ToolTipService.ToolTip="今日卡片上按时间列出当天灵感。点「时间线」看近几天。点这里或点某一条，可以添加、修改或删除。不是待办，不进月报。">
+                        ToolTipService.ToolTip="添加、修改或删除当天灵感。">
                         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
                             <FontIcon FontSize="15" Glyph="&#xEA80;" />
                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="灵感" />
@@ -698,7 +698,7 @@
                 BorderBrush="{StaticResource SoftLineBrush}"
                 BorderThickness="1"
                 CornerRadius="16"
-                ToolTipService.ToolTip="轻量番茄钟。默认 25 分钟专注、5 分钟休息。到点在屏幕左下角提示，没有声音，也不打断任务提醒。">
+                ToolTipService.ToolTip="到点在左下角弹出，没有声音，也不打断任务提醒。">
                 <Grid RowDefinitions="Auto,Auto" RowSpacing="8">
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
                         <StackPanel VerticalAlignment="Center" Spacing="0">
@@ -744,28 +744,33 @@
                     <StackPanel
                         Grid.Row="1"
                         Orientation="Horizontal"
-                        Spacing="6">
+                        Spacing="8">
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource SoftMutedInkBrush}"
+                            Text="工作 / 休息（分钟）" />
                         <Button
                             x:Name="FocusPreset25"
                             Click="FocusPreset_Click"
                             Content="25/5"
                             Style="{StaticResource CategoryChipStyle}"
                             Tag="25,5"
-                            ToolTipService.ToolTip="经典 25 分钟，休息 5 分钟" />
+                            ToolTipService.ToolTip="专注 25 分钟，休息 5 分钟" />
                         <Button
                             x:Name="FocusPreset15"
                             Click="FocusPreset_Click"
                             Content="15/3"
                             Style="{StaticResource CategoryChipStyle}"
                             Tag="15,3"
-                            ToolTipService.ToolTip="短一点" />
+                            ToolTipService.ToolTip="专注 15 分钟，休息 3 分钟" />
                         <Button
                             x:Name="FocusPreset50"
                             Click="FocusPreset_Click"
                             Content="50/10"
                             Style="{StaticResource CategoryChipStyle}"
                             Tag="50,10"
-                            ToolTipService.ToolTip="长一点" />
+                            ToolTipService.ToolTip="专注 50 分钟，休息 10 分钟" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -1029,7 +1034,7 @@
                                     <TextBlock
                                         FontSize="12"
                                         Foreground="{StaticResource SoftMutedInkBrush}"
-                                        Text="近 7 天，按时间从早到晚。记在每天笔记的灵感小节，不进月报。"
+                                        Text="近 7 天，从早到晚。"
                                         TextWrapping="Wrap" />
                                 </StackPanel>
                                 <Button
@@ -1045,7 +1050,7 @@
                                 x:Name="InspirationFlowEmpty"
                                 FontSize="13"
                                 Foreground="{StaticResource SoftMutedInkBrush}"
-                                Text="这几天还没有灵感。点「记一句」写进这一天。"
+                                Text="这几天还没有灵感。"
                                 TextWrapping="Wrap"
                                 Visibility="Collapsed" />
                             <StackPanel x:Name="InspirationFlowDays" Spacing="12" />
