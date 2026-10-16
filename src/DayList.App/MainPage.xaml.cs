@@ -159,6 +159,22 @@ public sealed partial class MainPage : Page
         else
             UpdateDateChrome();
 
+        if (_host is not null)
+            WindowChrome.Attach(_host, ShellRoot, TitleBar, WindowOutline, TrafficLights, SyncZoomTip);
+        WindowChrome.ApplyBlurSurface(this, SidebarPane);
+        MacScroll.AttachTree(this);
+        AddBox.GotFocus += (_, _) =>
+        {
+            if (Application.Current.Resources.TryGetValue("MacBlueBrush", out var brush) && brush is Brush accent)
+                Composer.BorderBrush = accent;
+            Composer.BorderThickness = new Thickness(1);
+        };
+        AddBox.LostFocus += (_, _) =>
+        {
+            Composer.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            Composer.BorderThickness = new Thickness(0);
+        };
+
         _reminderTimer = DispatcherQueue.CreateTimer();
         _reminderTimer.Interval = TimeSpan.FromSeconds(5);
         _reminderTimer.IsRepeating = true;
@@ -552,10 +568,9 @@ public sealed partial class MainPage : Page
         var done = _rows.Count(row => row.IsDone);
         var open = total - done;
         StatsText.Text = total == 0
-            ? "0 / 0 完成"
-            : $"{done} / {total} 完成";
+            ? "0/0 完成"
+            : $"{done}/{total} 完成";
 
-        SideProgressRing.Maximum = 1;
         SideProgressRing.Value = total == 0 ? 0 : (double)done / total;
         SideProgressPercent.Text = total == 0 ? "0%" : $"{(int)Math.Round(100.0 * done / total)}%";
 
@@ -1104,6 +1119,20 @@ public sealed partial class MainPage : Page
             UpdateStats();
         }
     }
+
+    private void ChromeClose_Click(object sender, RoutedEventArgs e) => (_host ?? App.Window).Close();
+
+    private void ChromeMin_Click(object sender, RoutedEventArgs e) => WindowChrome.Minimize(_host ?? App.Window);
+
+    private void ChromeZoom_Click(object sender, RoutedEventArgs e)
+    {
+        var window = _host ?? App.Window;
+        WindowChrome.ToggleZoom(window);
+        SyncZoomTip(WindowChrome.IsMaximized(window));
+    }
+
+    private void SyncZoomTip(bool maximized) =>
+        ToolTipService.SetToolTip(ZoomLight, maximized ? "还原" : "最大化");
 
     private void Pin_Click(object sender, RoutedEventArgs e)
     {

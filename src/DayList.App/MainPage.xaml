@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:DayList"
     Background="{StaticResource SoftCreamBrush}"
+    FontFamily="Segoe UI Variable Text, Segoe UI Variable, Segoe UI"
     RequestedTheme="Light"
     UseLayoutRounding="True">
     <Page.Resources>
@@ -36,11 +37,11 @@
                 </Border>
                 <CheckBox
                     Grid.Column="1"
-                    MinWidth="28"
                     VerticalAlignment="Center"
+                    AutomationProperties.Name="完成"
                     Checked="TaskDoneChanged"
-                    Foreground="{StaticResource SoftInkBrush}"
                     IsChecked="{x:Bind IsDone, Mode=OneWay}"
+                    Style="{StaticResource MacCheckBoxStyle}"
                     Unchecked="TaskDoneChanged" />
                 <Border Grid.Column="2" Width="{x:Bind IndentWidth, Mode=OneWay}" />
                 <TextBox
@@ -98,129 +99,84 @@
         </DataTemplate>
 
         <DataTemplate x:Key="CategoryCardTemplate" x:DataType="local:CategoryCardModel">
-            <Border
-                Margin="0,0,0,14"
-                AllowDrop="True"
-                Background="{x:Bind CardFillBrush, Mode=OneTime}"
-                BorderBrush="{x:Bind SoftAccentBrush, Mode=OneTime}"
-                BorderThickness="1"
-                CornerRadius="16"
-                DragOver="Header_DragOver"
-                Drop="Header_Drop"
-                ToolTipService.ToolTip="拖到卡片上可改分类">
-                <Grid ColumnDefinitions="5,*">
-                    <!-- Left accent bar -->
-                    <Border
-                        Background="{x:Bind AccentBrush, Mode=OneTime}"
-                        CornerRadius="16,0,0,16" />
-                    <Grid Grid.Column="1" Padding="0,0,0,6">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <!-- Tinted header wash -->
-                        <Border
-                            Padding="14,12,14,10"
-                            Background="{x:Bind HeaderWashBrush, Mode=OneTime}"
-                            CornerRadius="0,16,0,0">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
-                                <Border
-                                    Width="34"
-                                    Height="34"
-                                    Background="{StaticResource SoftCardBrush}"
-                                    CornerRadius="10"
-                                    VerticalAlignment="Center">
-                                    <FontIcon
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontSize="15"
-                                        Foreground="{x:Bind AccentBrush, Mode=OneTime}"
-                                        Glyph="{x:Bind Glyph, Mode=OneTime}" />
-                                </Border>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    VerticalAlignment="Center"
-                                    FontSize="16"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource SoftInkBrush}"
-                                    Text="{x:Bind Title, Mode=OneTime}"
-                                    TextTrimming="CharacterEllipsis" />
-                                <TextBlock
-                                    Grid.Column="2"
-                                    VerticalAlignment="Center"
-                                    FontSize="13"
-                                    Foreground="{StaticResource SoftMutedInkBrush}"
-                                    Text="{x:Bind FractionText, Mode=OneWay}" />
-                                <Grid
-                                    Grid.Column="3"
-                                    Width="40"
-                                    Height="40"
-                                    VerticalAlignment="Center">
-                                    <ProgressRing
-                                        Width="36"
-                                        Height="36"
-                                        Foreground="{x:Bind AccentBrush, Mode=OneTime}"
-                                        IsIndeterminate="False"
-                                        Maximum="1"
-                                        Minimum="0"
-                                        Value="{x:Bind ProgressValue, Mode=OneWay}" />
-                                    <TextBlock
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontSize="10"
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource SoftInkBrush}"
-                                        Text="{x:Bind ProgressLabel, Mode=OneWay}" />
-                                </Grid>
-                            </Grid>
-                        </Border>
-                        <Border
-                            Grid.Row="1"
-                            Padding="10,4,10,8"
-                            Background="#CCFFFBF6"
-                            CornerRadius="0,0,16,0">
-                            <ItemsControl
-                                ItemTemplate="{StaticResource TaskItemTemplate}"
-                                ItemsSource="{x:Bind Tasks, Mode=OneWay}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                            </ItemsControl>
-                        </Border>
-                    </Grid>
-                </Grid>
-            </Border>
+            <local:SoftCard>
+                <Border
+                    AllowDrop="True"
+                    Background="{StaticResource SoftCardBrush}"
+                    BorderThickness="0"
+                    CornerRadius="12"
+                    DragOver="Header_DragOver"
+                    Drop="Header_Drop"
+                    Padding="18,16,16,8"
+                    ToolTipService.ToolTip="拖到卡片上可改分类">
+                    <StackPanel Spacing="2">
+                        <Grid Margin="0,0,0,8" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                            <Ellipse
+                                Width="8"
+                                Height="8"
+                                VerticalAlignment="Center"
+                                Fill="{x:Bind AccentBrush, Mode=OneTime}" />
+                            <TextBlock
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SoftInkBrush}"
+                                Text="{x:Bind Title, Mode=OneTime}"
+                                TextTrimming="CharacterEllipsis" />
+                            <local:RingProgress
+                                Grid.Column="2"
+                                Width="16"
+                                Height="16"
+                                VerticalAlignment="Center"
+                                Stroke="{x:Bind AccentBrush, Mode=OneTime}"
+                                Thickness="3"
+                                Value="{x:Bind ProgressValue, Mode=OneWay}" />
+                            <TextBlock
+                                Grid.Column="3"
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                Text="{x:Bind FractionText, Mode=OneWay}"
+                                Typography.NumeralAlignment="Tabular" />
+                        </Grid>
+                        <ItemsControl
+                            ItemTemplate="{StaticResource TaskItemTemplate}"
+                            ItemsSource="{x:Bind Tasks, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </local:SoftCard>
         </DataTemplate>
 
         <!-- Completed view: same grouping, no progress ring or N/N score. -->
         <DataTemplate x:Key="CompletedCardTemplate" x:DataType="local:CategoryCardModel">
-            <Border
-                Margin="0,0,0,10"
-                AllowDrop="True"
-                Background="{StaticResource SoftCardBrush}"
-                BorderBrush="{StaticResource SoftLineBrush}"
-                BorderThickness="1"
-                CornerRadius="14"
-                DragOver="Header_DragOver"
-                Drop="Header_Drop"
-                ToolTipService.ToolTip="拖到卡片上可改分类">
-                <Grid ColumnDefinitions="4,*">
-                    <Border
-                        Background="{x:Bind AccentBrush, Mode=OneTime}"
-                        CornerRadius="14,0,0,14" />
-                    <StackPanel Grid.Column="1" Padding="12,8,12,6" Spacing="0">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Padding="0,2,0,4">
-                            <FontIcon
+            <local:SoftCard Padding="8,2,8,12">
+                <Border
+                    AllowDrop="True"
+                    Background="{StaticResource SoftCardBrush}"
+                    BorderThickness="0"
+                    CornerRadius="12"
+                    DragOver="Header_DragOver"
+                    Drop="Header_Drop"
+                    Padding="18,12,16,8"
+                    ToolTipService.ToolTip="拖到卡片上可改分类">
+                    <StackPanel Spacing="2">
+                        <Grid Margin="0,0,0,6" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <Ellipse
+                                Width="8"
+                                Height="8"
                                 VerticalAlignment="Center"
-                                FontSize="13"
-                                Foreground="{x:Bind AccentBrush, Mode=OneTime}"
-                                Glyph="{x:Bind Glyph, Mode=OneTime}" />
+                                Fill="{x:Bind AccentBrush, Mode=OneTime}" />
                             <TextBlock
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
-                                FontSize="14"
+                                FontSize="13"
                                 FontWeight="SemiBold"
                                 Foreground="{StaticResource SoftInkBrush}"
                                 Text="{x:Bind Title, Mode=OneTime}"
@@ -242,8 +198,8 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                     </StackPanel>
-                </Grid>
-            </Border>
+                </Border>
+            </local:SoftCard>
         </DataTemplate>
 
         <DataTemplate x:Key="InspirationGlanceTemplate" x:DataType="local:InspirationGlance">
@@ -282,17 +238,107 @@
         <KeyboardAccelerator Key="N" Modifiers="Control" Invoked="NewTaskInvoked" />
     </Page.KeyboardAccelerators>
 
-    <Grid>
+    <Grid x:Name="ShellRoot">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="44" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="TitleBar" Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel
+                x:Name="TrafficLights"
+                Margin="14,0,8,0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="2">
+                <Button
+                    x:Name="CloseLight"
+                    AutomationProperties.Name="关闭"
+                    Background="#FF5F57"
+                    Click="ChromeClose_Click"
+                    Content="×"
+                    Style="{StaticResource TrafficLightStyle}"
+                    ToolTipService.ToolTip="关闭" />
+                <Button
+                    x:Name="MinLight"
+                    AutomationProperties.Name="最小化"
+                    Background="#FFFEBC2E"
+                    Click="ChromeMin_Click"
+                    Content="–"
+                    Style="{StaticResource TrafficLightStyle}"
+                    ToolTipService.ToolTip="最小化" />
+                <Button
+                    x:Name="ZoomLight"
+                    AutomationProperties.Name="最大化"
+                    Background="#FF28C840"
+                    Click="ChromeZoom_Click"
+                    Content="+"
+                    Style="{StaticResource TrafficLightStyle}"
+                    ToolTipService.ToolTip="最大化" />
+            </StackPanel>
+            <StackPanel
+                x:Name="TitleActions"
+                Grid.Column="2"
+                Margin="0,0,14,0"
+                VerticalAlignment="Center"
+                Orientation="Horizontal"
+                Spacing="0">
+                <ToggleButton
+                    x:Name="PinButton"
+                    AutomationProperties.Name="置顶窗口"
+                    Click="Pin_Click"
+                    Style="{StaticResource SoftPinToggleStyle}"
+                    ToolTipService.ToolTip="窗口置顶">
+                    <FontIcon
+                        x:Name="PinIcon"
+                        FontSize="16"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Glyph="&#xE840;" />
+                </ToggleButton>
+                <Button
+                    x:Name="ObsidianButton"
+                    AutomationProperties.Name="在 Obsidian 中打开"
+                    Click="Obsidian_Click"
+                    IsEnabled="False"
+                    Style="{StaticResource SoftIconButtonStyle}"
+                    ToolTipService.ToolTip="在 Obsidian 中打开今日笔记">
+                    <FontIcon FontSize="16" Glyph="&#xE8A7;" />
+                </Button>
+                <Button
+                    x:Name="ExplorerButton"
+                    AutomationProperties.Name="在资源管理器中打开库"
+                    Click="Explorer_Click"
+                    IsEnabled="False"
+                    Style="{StaticResource SoftIconButtonStyle}"
+                    ToolTipService.ToolTip="在资源管理器中打开库">
+                    <FontIcon FontSize="16" Glyph="&#xE8B7;" />
+                </Button>
+            </StackPanel>
+            <Border
+                Grid.ColumnSpan="3"
+                Height="1"
+                VerticalAlignment="Bottom"
+                Background="#14000000"
+                IsHitTestVisible="False" />
+        </Grid>
+
+        <Grid Grid.Row="1">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="252" MinWidth="240" MaxWidth="280" />
             <ColumnDefinition Width="*" MinWidth="420" />
         </Grid.ColumnDefinitions>
 
-        <!-- Sidebar: date + horizontal progress like mock -->
+        <!-- Sidebar -->
         <Border
+            x:Name="SidebarPane"
             Grid.Column="0"
             Background="{StaticResource SoftCreamDeepBrush}"
-            BorderBrush="{StaticResource SoftLineBrush}"
+            BorderBrush="#14000000"
             BorderThickness="0,0,1,0"
             Padding="18,16,16,18">
             <Grid RowDefinitions="Auto,*,Auto">
@@ -364,14 +410,12 @@
                     <!-- Progress: ring + labels side by side (mock) -->
                     <Grid Margin="0,18,0,4" ColumnDefinitions="Auto,*" ColumnSpacing="14">
                         <Grid Width="72" Height="72">
-                            <ProgressRing
+                            <local:RingProgress
                                 x:Name="SideProgressRing"
                                 Width="68"
                                 Height="68"
-                                Foreground="#5B9BD5"
-                                IsIndeterminate="False"
-                                Maximum="1"
-                                Minimum="0"
+                                Stroke="{StaticResource SoftAccentBrush}"
+                                Thickness="4"
                                 Value="0" />
                             <TextBlock
                                 x:Name="SideProgressPercent"
@@ -380,7 +424,8 @@
                                 FontSize="18"
                                 FontWeight="SemiBold"
                                 Foreground="{StaticResource SoftInkBrush}"
-                                Text="0%" />
+                                Text="0%"
+                                Typography.NumeralAlignment="Tabular" />
                         </Grid>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                             <TextBlock
@@ -392,8 +437,9 @@
                                 FontSize="16"
                                 FontWeight="SemiBold"
                                 Foreground="{StaticResource SoftInkBrush}"
-                                Text="0 / 0 完成"
-                                TextWrapping="WrapWholeWords" />
+                                Text="0/0 完成"
+                                TextWrapping="WrapWholeWords"
+                                Typography.NumeralAlignment="Tabular" />
                         </StackPanel>
                     </Grid>
                 </StackPanel>
@@ -524,8 +570,7 @@
             Padding="22,14,22,16"
             RowDefinitions="Auto,Auto,*,Auto"
             RowSpacing="10">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="2">
-                <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
+            <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
                     <TextBlock
                         x:Name="GreetingText"
                         MaxWidth="280"
@@ -599,41 +644,7 @@
                         Click="Today_Click"
                         Content="今天"
                         Visibility="Collapsed" />
-                </StackPanel>
-                <ToggleButton
-                    x:Name="PinButton"
-                    Grid.Column="1"
-                    AutomationProperties.Name="置顶窗口"
-                    Style="{StaticResource SoftPinToggleStyle}"
-                    Click="Pin_Click"
-                    ToolTipService.ToolTip="窗口置顶">
-                    <FontIcon
-                        x:Name="PinIcon"
-                        FontSize="16"
-                        Foreground="{StaticResource SoftMutedInkBrush}"
-                        Glyph="&#xE840;" />
-                </ToggleButton>
-                <Button
-                    x:Name="ObsidianButton"
-                    Grid.Column="2"
-                    AutomationProperties.Name="在 Obsidian 中打开"
-                    Click="Obsidian_Click"
-                    IsEnabled="False"
-                    Style="{StaticResource SoftIconButtonStyle}"
-                    ToolTipService.ToolTip="在 Obsidian 中打开今日笔记">
-                    <FontIcon FontSize="16" Glyph="&#xE8A7;" />
-                </Button>
-                <Button
-                    x:Name="ExplorerButton"
-                    Grid.Column="3"
-                    AutomationProperties.Name="在资源管理器中打开库"
-                    Click="Explorer_Click"
-                    IsEnabled="False"
-                    Style="{StaticResource SoftIconButtonStyle}"
-                    ToolTipService.ToolTip="在资源管理器中打开库">
-                    <FontIcon FontSize="16" Glyph="&#xE8B7;" />
-                </Button>
-</Grid>
+            </StackPanel>
 
             <StackPanel Grid.Row="1" Spacing="8">
                 <InfoBar x:Name="StatusBar" Style="{StaticResource SoftInfoBarStyle}" IsClosable="True" IsOpen="False" />
@@ -650,14 +661,12 @@
                         <Button Click="LoadExternal_Click" Content="载入" />
                     </InfoBar.ActionButton>
                 </InfoBar>
-                <Border
-                    x:Name="OverduePanel"
-                    Padding="14,10"
-                    Background="{StaticResource SoftAmberBrush}"
-                    BorderBrush="#F0E6C8A0"
-                    BorderThickness="1"
-                    CornerRadius="14"
-                    Visibility="Collapsed">
+                <local:SoftCard x:Name="OverduePanel" Padding="2,2,2,8" Visibility="Collapsed">
+                    <Border
+                        Padding="16,12"
+                        Background="{StaticResource SoftCardBrush}"
+                        BorderThickness="0"
+                        CornerRadius="12">
                     <Grid RowSpacing="6">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -668,18 +677,18 @@
                             ColumnDefinitions="Auto,*,Auto"
                             ColumnSpacing="8"
                             Tapped="OverdueHeader_Tapped">
-                            <FontIcon
-                                FontSize="14"
-                                Foreground="{StaticResource SoftAmberInkBrush}"
-                                Glyph="&#xE706;"
-                                VerticalAlignment="Center" />
+                            <Ellipse
+                                Width="8"
+                                Height="8"
+                                VerticalAlignment="Center"
+                                Fill="#FF9500" />
                             <TextBlock
                                 x:Name="OverdueTitle"
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
                                 FontSize="13"
                                 FontWeight="SemiBold"
-                                Foreground="{StaticResource SoftAmberInkBrush}"
+                                Foreground="{StaticResource SoftInkBrush}"
                                 Text="昨日未完成"
                                 TextWrapping="NoWrap"
                                 TextTrimming="CharacterEllipsis" />
@@ -696,7 +705,7 @@
                                     x:Name="OverdueChevron"
                                     VerticalAlignment="Center"
                                     FontSize="12"
-                                    Foreground="{StaticResource SoftAmberInkBrush}"
+                                    Foreground="{StaticResource SoftMutedInkBrush}"
                                     Glyph="&#xE76C;" />
                             </StackPanel>
                         </Grid>
@@ -709,35 +718,31 @@
                             SelectionMode="None"
                             Visibility="Collapsed" />
                     </Grid>
-                </Border>
+                    </Border>
+                </local:SoftCard>
             </StackPanel>
 
             <Grid x:Name="WorkBody" Grid.Row="2" Visibility="Collapsed">
                 <ScrollViewer
+                    x:Name="WorkScroller"
                     HorizontalScrollBarVisibility="Disabled"
                     HorizontalScrollMode="Disabled"
                     VerticalScrollBarVisibility="Auto"
                     VerticalScrollMode="Enabled">
                     <StackPanel Padding="0,0,4,8">
-                        <Border
-                            x:Name="InspirationStrip"
-                            Margin="0,0,0,14"
-                            Background="{StaticResource SoftCardBrush}"
-                            BorderBrush="{StaticResource SoftLineBrush}"
-                            BorderThickness="1"
-                            CornerRadius="16"
-                            Visibility="Collapsed">
-                            <Grid ColumnDefinitions="5,*">
-                                <Border
-                                    Background="{StaticResource SoftAmberBrush}"
-                                    CornerRadius="16,0,0,16" />
-                                <StackPanel Grid.Column="1" Padding="12,10,12,8" Spacing="2">
+                        <local:SoftCard x:Name="InspirationStrip" Padding="8,4,8,8" Visibility="Collapsed">
+                            <Border
+                                Background="{StaticResource SoftCardBrush}"
+                                BorderThickness="0"
+                                CornerRadius="12"
+                                Padding="18,14,16,10">
+                                <StackPanel Spacing="2">
                                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                        <FontIcon
+                                        <Ellipse
+                                            Width="8"
+                                            Height="8"
                                             VerticalAlignment="Center"
-                                            FontSize="14"
-                                            Foreground="{StaticResource SoftAmberInkBrush}"
-                                            Glyph="&#xEA80;" />
+                                            Fill="#FF9500" />
                                         <StackPanel
                                             Grid.Column="1"
                                             VerticalAlignment="Center"
@@ -745,7 +750,7 @@
                                             Spacing="8">
                                             <TextBlock
                                                 VerticalAlignment="Center"
-                                                FontSize="15"
+                                                FontSize="13"
                                                 FontWeight="SemiBold"
                                                 Foreground="{StaticResource SoftInkBrush}"
                                                 Text="灵感" />
@@ -805,8 +810,8 @@
                                         </ItemsControl>
                                     </ScrollViewer>
                                 </StackPanel>
-                            </Grid>
-                        </Border>
+                            </Border>
+                        </local:SoftCard>
                         <ItemsControl
                             x:Name="CategoryCards"
                             ItemTemplate="{StaticResource CategoryCardTemplate}">
@@ -851,7 +856,8 @@
                         AcceptsReturn="False"
                         Background="Transparent"
                         BorderThickness="0"
-                        FontSize="14"
+                        FontFamily="Segoe UI Variable Text, Segoe UI Variable, Segoe UI"
+                        FontSize="15"
                         KeyDown="AddBox_KeyDown"
                         PlaceholderText="添加任务…"
                         VerticalAlignment="Center" />
@@ -897,11 +903,10 @@
                     Text="DayList 不是另一套清单，它把待办写进 Obsidian 每日笔记的一个小节里，并用 ### 分类。"
                     TextWrapping="Wrap" />
                 <Border
-                    Padding="14,12"
+                    Padding="16,14"
                     Background="{StaticResource SoftCardBrush}"
-                    BorderBrush="{StaticResource SoftLineBrush}"
-                    BorderThickness="1"
-                    CornerRadius="14">
+                    BorderThickness="0"
+                    CornerRadius="12">
                     <TextBlock
                         FontFamily="Cascadia Mono, Consolas"
                         Foreground="{StaticResource SoftMutedInkBrush}"
@@ -914,5 +919,13 @@
                     Style="{StaticResource AccentButtonStyle}" />
             </StackPanel>
         </Grid>
+        </Grid>
+        <Border
+            x:Name="WindowOutline"
+            Grid.RowSpan="2"
+            BorderBrush="#24000000"
+            BorderThickness="1"
+            CornerRadius="12"
+            IsHitTestVisible="False" />
     </Grid>
 </Page>

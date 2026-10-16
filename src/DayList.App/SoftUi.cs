@@ -12,12 +12,14 @@ namespace DayList;
 /// </summary>
 internal static class SoftUi
 {
-    private static readonly Color Cream = Color.FromArgb(255, 0xF7, 0xF2, 0xEA);
-    private static readonly Color Paper = Color.FromArgb(255, 0xFF, 0xFB, 0xF6);
-    private static readonly Color Line = Color.FromArgb(255, 0xE4, 0xD8, 0xC8);
-    private static readonly Color Ink = Color.FromArgb(255, 0x3D, 0x34, 0x29);
-    private static readonly Color Muted = Color.FromArgb(255, 0x7A, 0x6F, 0x62);
-    private static readonly Color Deep = Color.FromArgb(255, 0xF0, 0xE8, 0xDC);
+    private static readonly Color Cream = Color.FromArgb(255, 0xF5, 0xF5, 0xF7);
+    private static readonly Color Paper = Color.FromArgb(255, 0xFF, 0xFF, 0xFF);
+    private static readonly Color Field = Color.FromArgb(255, 0xE8, 0xE8, 0xED);
+    private static readonly Color Line = Color.FromArgb(26, 0x00, 0x00, 0x00);
+    private static readonly Color Ink = Color.FromArgb(255, 0x1D, 0x1D, 0x1F);
+    private static readonly Color Muted = Color.FromArgb(153, 0x3C, 0x3C, 0x43);
+    private static readonly Color Deep = Color.FromArgb(255, 0xE8, 0xE8, 0xED);
+    private static readonly Color Accent = Color.FromArgb(255, 0x00, 0x7A, 0xFF);
 
     public static Style? DialogFieldStyle => StyleOf("SoftSettingsFieldStyle");
 
@@ -93,9 +95,9 @@ internal static class SoftUi
             MaxHeight = maxHeight,
             FontSize = 14,
             RequestedTheme = ElementTheme.Light,
-            Background = new SolidColorBrush(Paper),
+            Background = new SolidColorBrush(Field),
             Foreground = new SolidColorBrush(Ink),
-            BorderBrush = new SolidColorBrush(Line),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0)),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(10),
             Padding = new Thickness(10, 8, 10, 8)
@@ -125,9 +127,9 @@ internal static class SoftUi
             return;
 
         combo.RequestedTheme = ElementTheme.Light;
-        combo.Background = new SolidColorBrush(Paper);
+        combo.Background = new SolidColorBrush(Field);
         combo.Foreground = new SolidColorBrush(Ink);
-        combo.BorderBrush = new SolidColorBrush(Line);
+        combo.BorderBrush = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
         combo.CornerRadius = new CornerRadius(14);
 
         // Popup reads these ThemeResources from the ComboBox's resource lookup.
@@ -161,7 +163,7 @@ internal static class SoftUi
         Brush("ComboBoxItemForegroundPointerOver", Ink);
         Brush("ComboBoxItemForegroundSelected", Ink);
         Brush("ComboBoxItemForegroundSelectedUnfocused", Ink);
-        Brush("ComboBoxItemPillFillBrush", Color.FromArgb(255, 0x5B, 0x9B, 0xD5));
+        Brush("ComboBoxItemPillFillBrush", Accent);
         Brush("AcrylicInAppFillColorDefaultBrush", Cream);
         Brush("AcrylicBackgroundFillColorDefaultBrush", Cream);
         Brush("SolidBackgroundFillColorBaseBrush", Cream);
@@ -206,7 +208,7 @@ internal static class SoftUi
         Brush("ContentDialogBorderBrush", Line);
         Brush("ContentDialogForeground", Ink);
         Brush("ContentDialogSeparatorBorderBrush", Line);
-        Brush("ContentDialogSmokeFill", Color.FromArgb(140, 0x3D, 0x34, 0x29));
+        Brush("ContentDialogSmokeFill", Color.FromArgb(140, 0x1D, 0x1D, 0x1F));
         Brush("SolidBackgroundFillColorBaseBrush", Cream);
         Brush("LayerFillColorAltBrush", Cream);
         Brush("CardBackgroundFillColorDefaultBrush", Paper);
@@ -220,9 +222,10 @@ internal static class SoftUi
         Brush("ButtonBorderBrush", Line);
         Brush("ControlFillColorDefaultBrush", Paper);
         Brush("ControlFillColorSecondaryBrush", Deep);
-        Brush("TextControlBackground", Paper);
-        Brush("TextControlBackgroundFocused", Paper);
-        Brush("TextControlBorderBrush", Line);
+        Brush("TextControlBackground", Field);
+        Brush("TextControlBackgroundFocused", Field);
+        Brush("TextControlBorderBrush", Color.FromArgb(0, 0, 0, 0));
+        Brush("TextControlBorderBrushFocused", Accent);
         Brush("TextControlForeground", Ink);
         Brush("TextControlPlaceholderForeground", Muted);
     }
@@ -233,9 +236,9 @@ internal static class SoftUi
         {
             case TextBox box:
                 box.RequestedTheme = ElementTheme.Light;
-                box.Background = new SolidColorBrush(Paper);
+                box.Background = new SolidColorBrush(Field);
                 box.Foreground = new SolidColorBrush(Ink);
-                box.BorderBrush = new SolidColorBrush(Line);
+                box.BorderBrush = new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
                 if (box.Style is null && DialogFieldStyle is Style field)
                     box.Style = field;
                 break;
