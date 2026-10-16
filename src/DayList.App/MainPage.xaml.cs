@@ -926,7 +926,7 @@ public sealed partial class MainPage : Page
 
         ForgetReminder(row);
         ApplyInspirations(nextEntries);
-        ShowStatus("已转为灵感。不会进入月报。", InfoBarSeverity.Success);
+        ShowStatus("已转为灵感。", InfoBarSeverity.Success);
     }
 
     private void UpdateDateChrome()
@@ -991,7 +991,7 @@ public sealed partial class MainPage : Page
             EmptyState.Visibility = Visibility.Collapsed;
             TemplateLead.Visibility = Visibility.Collapsed;
             TemplateHost.Visibility = Visibility.Collapsed;
-            GreetingText.Text = "近几天的灵感，按时间排开。";
+            GreetingText.Text = "近几天的灵感。";
         }
         else
         {
@@ -2956,7 +2956,7 @@ public sealed partial class MainPage : Page
             {
                 list.Children.Add(new TextBlock
                 {
-                    Text = "还没有灵感。在下面写一句，点保存。不会进月报，也不是待办。",
+                    Text = "还没有灵感。",
                     FontSize = 12,
                     TextWrapping = TextWrapping.Wrap,
                     Foreground = new SolidColorBrush(Color.FromArgb(255, 0x7A, 0x6F, 0x62))
@@ -3006,7 +3006,7 @@ public sealed partial class MainPage : Page
         var (_, inspirationTitle) = HeadingSpec.Parse(_settings.InspirationHeading);
         var panel = new StackPanel { Spacing = 10, MaxWidth = 440 };
         panel.Children.Add(SoftUi.CreateDialogBody(
-            $"在下面写一句，点保存。记在当天笔记的「{inspirationTitle}」。不是待办，不进月报，也不参与生成计划。"));
+            $"写一句，点保存。记在「{inspirationTitle}」。"));
         panel.Children.Add(new ScrollViewer
         {
             Content = list,
@@ -3106,7 +3106,7 @@ public sealed partial class MainPage : Page
             Foreground = new SolidColorBrush(Color.FromArgb(255, 0xB3, 0x3A, 0x3A))
         };
         var panel = new StackPanel { Spacing = 8, MaxWidth = 380 };
-        panel.Children.Add(SoftUi.CreateDialogBody("上下滚动选择小时和分钟，再点保存。到点会在屏幕右下角弹出小卡片，不会把主窗口拉到前面。需要 DayList 开着或在托盘里；退出后不会响，也不会改笔记里的任务。"));
+        panel.Children.Add(SoftUi.CreateDialogBody("上下滚动选择时间，再点保存。"));
         panel.Children.Add(wheels);
         panel.Children.Add(error);
 

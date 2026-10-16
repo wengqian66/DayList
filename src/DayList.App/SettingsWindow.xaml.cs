@@ -134,7 +134,7 @@ public sealed partial class SettingsWindow : Window
                 ? " 灵感小节和待办小节同名，记灵感前需要改开。"
                 : "";
             PreviewText.Text =
-                $"今天写入 {daily} 的小节「{title}」（笔记里是 {HeadingSpec.Format(level, title)}）。灵感写入「{inspiration}」，不进月报。AI 月报写入 {report}。热键 {draft.Hotkey}。{clash}";
+                $"今天写入 {daily} 的小节「{title}」（笔记里是 {HeadingSpec.Format(level, title)}）。灵感写入「{inspiration}」。AI 月报写入 {report}。热键 {draft.Hotkey}。{clash}";
         }
         catch (Exception ex)
         {

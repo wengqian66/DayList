@@ -117,8 +117,8 @@ public sealed class TaskRow : INotifyPropertyChanged
     }
 
     public string ReminderToolTip => string.IsNullOrEmpty(_reminderTime)
-        ? "设提醒：滚动选择这一天的时间。需要 DayList 开着或在托盘才会响，不改笔记。"
-        : $"{_reminderTime} 提醒。点击可改时间或清除。需要 DayList 开着或在托盘才会响。";
+        ? "滚动选择这一天的时间，开着或在托盘才会响。"
+        : $"{_reminderTime}，点击可改时间或清除。";
 
     public Visibility ReminderTimeVisibility =>
         string.IsNullOrEmpty(_reminderTime) ? Visibility.Collapsed : Visibility.Visible;
