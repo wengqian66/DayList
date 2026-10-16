@@ -396,10 +396,10 @@ public sealed class CategoryHeaderRow
 /// <summary>One saved inspiration, as shown on the Today card. Editing stays in the dialog.</summary>
 public sealed class InspirationGlance
 {
-    public InspirationGlance(InspirationEntry entry)
+    public InspirationGlance(string timeLabel, string preview)
     {
-        TimeLabel = string.IsNullOrEmpty(entry.TimeLabel) ? "·" : entry.TimeLabel;
-        Preview = entry.GlanceText();
+        TimeLabel = string.IsNullOrEmpty(timeLabel) ? "·" : timeLabel;
+        Preview = preview ?? "";
     }
 
     public string TimeLabel { get; }

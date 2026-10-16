@@ -4,6 +4,7 @@ using System.Globalization;
 using Windows.UI;
 using DayList.Core;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -24,7 +25,7 @@ public sealed partial class MainPage : Page
     private readonly PlanGenerationService _plans = new(Http);
     private readonly ObservableCollection<TaskRow> _rows = new();
     private readonly ObservableCollection<CategoryCardModel> _cards = new();
-    private enum MainNav { Today, Completed }
+    private enum MainNav { Today, Completed, Flow }
     private MainNav _nav = MainNav.Today;
     private readonly ObservableCollection<OverdueRow> _overdue = new();
     private readonly CancellationTokenSource _pageCts = new();
@@ -70,6 +71,9 @@ public sealed partial class MainPage : Page
     private readonly List<InspirationEntry> _inspirations = new();
     private readonly ObservableCollection<InspirationGlance> _inspirationGlance = new();
     private bool _inspirationDialogOpen;
+    private readonly FocusSession _focus = new();
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _focusTimer;
+    private DateTime _focusStamp;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _reminderTimer;
     private readonly HashSet<string> _reminderInflight = new(StringComparer.Ordinal);
     private readonly Queue<TaskReminder> _dueReminders = new();
@@ -192,6 +196,13 @@ public sealed partial class MainPage : Page
         _reminderTimer.Tick += (_, _) => CheckReminders();
         _reminderTimer.Start();
         CheckReminders();
+
+        _focus.Use(FocusDuration.Normalize(_settings.FocusMinutes, _settings.BreakMinutes));
+        _focusTimer = DispatcherQueue.CreateTimer();
+        _focusTimer.Interval = TimeSpan.FromMilliseconds(250);
+        _focusTimer.IsRepeating = true;
+        _focusTimer.Tick += (_, _) => OnFocusTick();
+        RenderFocus();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -199,6 +210,8 @@ public sealed partial class MainPage : Page
         _closed = true;
         _pageCts.Cancel();
         _reminderTimer?.Stop();
+        _focusTimer?.Stop();
+        FocusPopup.Dismiss();
         _syncClock?.Stop();
         HideCelebration();
         _watcher?.Dispose();
@@ -973,6 +986,13 @@ public sealed partial class MainPage : Page
             TemplateHost.Visibility = Visibility.Collapsed;
             GreetingText.Text = done == 0 ? "完成任务后会出现在这里。" : "这些是已经勾掉的任务。";
         }
+        else if (_nav == MainNav.Flow)
+        {
+            EmptyState.Visibility = Visibility.Collapsed;
+            TemplateLead.Visibility = Visibility.Collapsed;
+            TemplateHost.Visibility = Visibility.Collapsed;
+            GreetingText.Text = "近几天的灵感，按时间排开。";
+        }
         else
         {
             EmptyHint.Text = _date == today
@@ -1045,6 +1065,27 @@ public sealed partial class MainPage : Page
         RefreshOverdue();
     }
 
+    private void NavFlow_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_settings.HasVault)
+        {
+            ShowStatus("先连接 Obsidian 库，灵感才会写进当天笔记。", InfoBarSeverity.Warning);
+            return;
+        }
+
+        if (InspirationSection.SameHeading(_settings.SectionHeading, _settings.InspirationHeading))
+        {
+            ShowStatus("灵感小节和待办小节重名了，请在设置里改一个。", InfoBarSeverity.Warning, "打开设置", () => OpenSettings());
+            return;
+        }
+
+        _nav = MainNav.Flow;
+        RefreshInspirationFlow();
+        RebuildList();
+        UpdateStats();
+        RefreshOverdue();
+    }
+
     private void SyncNavChrome()
     {
         if (NavTodayButton is null || NavDoneButton is null)
@@ -1052,19 +1093,41 @@ public sealed partial class MainPage : Page
 
         var selected = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SoftNavSelectedBrush"];
         var clear = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        var flow = _nav == MainNav.Flow;
         NavTodayButton.Background = _nav == MainNav.Today ? selected : clear;
         NavDoneButton.Background = _nav == MainNav.Completed ? selected : clear;
+        if (NavFlowButton is not null)
+            NavFlowButton.Background = flow ? selected : clear;
         if (InspirationStrip is not null)
             InspirationStrip.Visibility = _nav == MainNav.Today ? Visibility.Visible : Visibility.Collapsed;
+        if (InspirationFlowPanel is not null)
+            InspirationFlowPanel.Visibility = flow ? Visibility.Visible : Visibility.Collapsed;
+        if (CategoryCards is not null)
+            CategoryCards.Visibility = flow ? Visibility.Collapsed : Visibility.Visible;
+        if (flow && EmptyState is not null)
+            EmptyState.Visibility = Visibility.Collapsed;
+        if (Composer is not null && _settings.HasVault)
+            Composer.Visibility = flow ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void NewTaskInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        if (_settings.HasVault)
-            AddBox.Focus(FocusState.Programmatic);
-        else
+        if (!_settings.HasVault)
+        {
             OpenSettings();
+            return;
+        }
+
+        if (_nav == MainNav.Flow)
+        {
+            _nav = MainNav.Today;
+            RebuildList();
+            UpdateStats();
+            RefreshOverdue();
+        }
+
+        AddBox.Focus(FocusState.Programmatic);
     }
 
     private async void PasteTasksInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -2028,6 +2091,8 @@ public sealed partial class MainPage : Page
             saved.WindowTop = _settings.WindowTop;
             saved.WindowWidth = _settings.WindowWidth;
             saved.WindowHeight = _settings.WindowHeight;
+            saved.FocusMinutes = _focus.Duration.FocusMinutes;
+            saved.BreakMinutes = _focus.Duration.BreakMinutes;
             _settings = saved;
             try
             {
@@ -3329,12 +3394,18 @@ public sealed partial class MainPage : Page
             InspirationGlanceList.ItemsSource = null;
 
         _inspirationGlance.Clear();
-        foreach (var entry in _inspirations)
+        var sources = new List<InspirationFlowSource>(_inspirations.Count);
+        for (var i = 0; i < _inspirations.Count; i++)
         {
-            var glance = new InspirationGlance(entry);
-            if (glance.Preview.Length == 0)
-                continue;
-            _inspirationGlance.Add(glance);
+            var entry = _inspirations[i];
+            sources.Add(new InspirationFlowSource(_date, i, entry.TimeLabel, entry.Text));
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        foreach (var day in InspirationFlow.Arrange(_date, today, sources, 1))
+        {
+            foreach (var item in day.Items)
+                _inspirationGlance.Add(new InspirationGlance(item.Clock, item.Glance));
         }
 
         if (InspirationGlanceList is not null)
@@ -3355,6 +3426,244 @@ public sealed partial class MainPage : Page
             InspirationAddButton.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
         if (InspirationGlanceHost is not null)
             InspirationGlanceHost.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        if (_nav == MainNav.Flow)
+            RefreshInspirationFlow();
+    }
+
+    private void RefreshInspirationFlow()
+    {
+        if (InspirationFlowDays is null)
+            return;
+
+        InspirationFlowDays.Children.Clear();
+        IReadOnlyList<InspirationFlowDay> days = Array.Empty<InspirationFlowDay>();
+        var failed = false;
+        if (_settings.HasVault)
+        {
+            try
+            {
+                days = InspirationFlow.Read(_settings, _date, DateOnly.FromDateTime(DateTime.Now));
+            }
+            catch (Exception ex)
+            {
+                failed = true;
+                ShowStatus("没能读出灵感：" + ex.Message, InfoBarSeverity.Warning);
+            }
+        }
+
+        var total = days.Sum(day => day.Items.Count);
+        if (InspirationFlowEmpty is not null)
+        {
+            InspirationFlowEmpty.Text = failed
+                ? "没能读出这几天的灵感。"
+                : "这几天还没有灵感。点「记一句」写进这一天。";
+            InspirationFlowEmpty.Visibility = total == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        foreach (var day in days)
+        {
+            var date = day.Date;
+            InspirationFlowDays.Children.Add(InspirationFlowPresenter.DayCard(
+                day,
+                date == _date,
+                () => OpenFlowDate(date),
+                EditInspirations));
+        }
+    }
+
+    private void OpenFlowDate(DateOnly date)
+    {
+        _nav = MainNav.Today;
+        if (date == _date)
+        {
+            RebuildList();
+            UpdateStats();
+            RefreshOverdue();
+            return;
+        }
+
+        SetDate(date);
+    }
+
+    private void EditInspirations() => Inspiration_Click(this, new RoutedEventArgs());
+
+    private void FocusPrimary_Click(object sender, RoutedEventArgs e)
+    {
+        FocusPopup.Dismiss();
+        if (_focus.Phase == FocusPhase.Idle)
+            _focus.StartFocus();
+        else if (_focus.IsPaused)
+            _focus.Resume();
+        else
+            _focus.Pause();
+        ArmFocusClock();
+        RenderFocus();
+    }
+
+    private void FocusReset_Click(object sender, RoutedEventArgs e)
+    {
+        FocusPopup.Dismiss();
+        _focus.Reset();
+        ArmFocusClock();
+        RenderFocus();
+    }
+
+    private void FocusPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (_focus.Phase != FocusPhase.Idle)
+            return;
+        if (sender is not FrameworkElement { Tag: string tag })
+            return;
+
+        var parts = tag.Split(',');
+        if (parts.Length != 2
+            || !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var focus)
+            || !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var rest))
+        {
+            return;
+        }
+
+        if (!_focus.Use(new FocusDuration(focus, rest)))
+            return;
+
+        _settings.FocusMinutes = _focus.Duration.FocusMinutes;
+        _settings.BreakMinutes = _focus.Duration.BreakMinutes;
+        try
+        {
+            SettingsStore.Save(_settings);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("时长已换上，但没能记到本机：" + ex.Message, InfoBarSeverity.Warning);
+        }
+
+        RenderFocus();
+    }
+
+    private void ArmFocusClock()
+    {
+        _focusStamp = DateTime.UtcNow;
+        if (_focusTimer is null)
+            return;
+        if (_focus.IsRunning)
+            _focusTimer.Start();
+        else
+            _focusTimer.Stop();
+    }
+
+    private void OnFocusTick()
+    {
+        if (_closed)
+        {
+            _focusTimer?.Stop();
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var elapsed = now - _focusStamp;
+        _focusStamp = now;
+        var before = _focus.RemainingSeconds;
+        FocusSignal signal;
+        try
+        {
+            signal = _focus.Advance(elapsed);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (signal == FocusSignal.None && before == _focus.RemainingSeconds)
+            return;
+
+        RenderFocus();
+        if (!_focus.IsRunning)
+            _focusTimer?.Stop();
+        if (signal == FocusSignal.None)
+            return;
+
+        try
+        {
+            ShowFocusEnded(signal);
+        }
+        catch
+        {
+            // The corner card is optional. The clock has already returned to idle.
+        }
+    }
+
+    private void ShowFocusEnded(FocusSignal signal)
+    {
+        var duration = _focus.Duration;
+        if (signal == FocusSignal.FocusEnded)
+        {
+            FocusPopup.Show(
+                FocusCopy.FocusEndedTitle,
+                FocusCopy.FocusEndedBody(duration),
+                new FocusPrompt("开始休息", true, BeginBreak),
+                new FocusPrompt("再来一轮", false, BeginFocus),
+                new FocusPrompt("关闭", false, null));
+            return;
+        }
+
+        FocusPopup.Show(
+            FocusCopy.BreakEndedTitle,
+            FocusCopy.BreakEndedBody(duration),
+            new FocusPrompt("开始专注", true, BeginFocus),
+            new FocusPrompt("关闭", false, null));
+    }
+
+    private void BeginFocus()
+    {
+        if (_closed)
+            return;
+        _focus.StartFocus();
+        ArmFocusClock();
+        RenderFocus();
+    }
+
+    private void BeginBreak()
+    {
+        if (_closed)
+            return;
+        _focus.StartBreak();
+        ArmFocusClock();
+        RenderFocus();
+    }
+
+    private void RenderFocus()
+    {
+        if (FocusClock is null || FocusPhaseText is null || FocusPrimaryButton is null)
+            return;
+
+        FocusClock.Text = FocusSession.FormatClock(_focus.RemainingSeconds);
+        FocusPhaseText.Text = FocusCopy.Status(_focus.Phase, _focus.IsPaused, _focus.CompletedRounds);
+        var primary = FocusCopy.Primary(_focus.Phase, _focus.IsPaused);
+        FocusPrimaryButton.Content = primary;
+        FocusPrimaryButton.SetValue(AutomationProperties.NameProperty, primary);
+        PaintPreset(FocusPreset25, 25, 5);
+        PaintPreset(FocusPreset15, 15, 3);
+        PaintPreset(FocusPreset50, 50, 10);
+    }
+
+    private void PaintPreset(Button? button, int focus, int rest)
+    {
+        if (button is null)
+            return;
+
+        var selected = _focus.Duration.FocusMinutes == focus && _focus.Duration.BreakMinutes == rest;
+        button.IsEnabled = _focus.Phase == FocusPhase.Idle;
+        if (!selected || Application.Current is null)
+        {
+            button.ClearValue(Control.BackgroundProperty);
+            button.ClearValue(Control.ForegroundProperty);
+            return;
+        }
+
+        if (Application.Current.Resources.TryGetValue("SoftAmberBrush", out var background) && background is Brush backgroundBrush)
+            button.Background = backgroundBrush;
+        if (Application.Current.Resources.TryGetValue("SoftAmberInkBrush", out var foreground) && foreground is Brush foregroundBrush)
+            button.Foreground = foregroundBrush;
     }
 
     private void BindReminders()

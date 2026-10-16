@@ -89,6 +89,8 @@ public sealed partial class SettingsWindow : Window
             MinimizeToTray = MinimizeToTrayBox.IsChecked == true,
             StartMinimizedToTray = StartMinimizedBox.IsChecked == true,
             Hotkey = HotkeyBox.Text ?? "",
+            FocusMinutes = _seed.FocusMinutes,
+            BreakMinutes = _seed.BreakMinutes,
             WindowLeft = _seed.WindowLeft,
             WindowTop = _seed.WindowTop,
             WindowWidth = _seed.WindowWidth,

@@ -15,14 +15,14 @@ Windows 上的每日待办。清单不另存数据库，只读写 Obsidian 库�
 
 ## 下载安装（推荐）
 
-从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.1.9。
+从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.2.0。
 
 - 自带 .NET 8 与 Windows App SDK，**无需再装 SDK 或运行时**
 - 默认装到 `Program Files\DayList`，可选桌面快捷方式
 - 首次打开后在设置里指定你的 **Obsidian 库文件夹**
 - 卸载后本机设置仍保留在 `%AppData%\DayList`（含 API Key，不会进安装包或仓库）
 
-当前版本：1.1.9。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
+当前版本：1.2.0。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
 
 ## 环境
 
@@ -82,9 +82,17 @@ API Key 以明文保存在本机的设置文件里，不会写进笔记。
 
 ## 灵感
 
-打开「今日」时，任务卡片上方会列出当天已经记下的灵感。没有时显示「还没有灵感」，点「添加」写一句。点某一条，或侧栏的「灵感」，打开同一个窗口来改、删或再加。记在当天笔记的单独小节，默认 `## 灵感`，不是 `- [ ]` 任务。逐步操作见 [使用说明 · 灵感怎么用](使用说明.md#灵感怎么用)。
+打开「今日」时，任务卡片上方按时间列出当天已经记下的灵感（早上在上，没写时间的排在后面）。没有时显示「还没有灵感」，点「添加」写一句。点某一条，或侧栏的「灵感」，打开同一个窗口来改、删或再加。新的一句仍写进当天笔记的单独小节，默认 `## 灵感`，不是 `- [ ]` 任务。逐步操作见 [使用说明 · 灵感怎么用](使用说明.md#灵感怎么用)。
+
+点卡片上的「时间线」，或侧栏的「灵感流」，可以按时间看这一天和前面 6 天。每一天仍读那篇笔记里的灵感小节，没有第二份记录。
 
 灵感**不进入月报**，也不参与「用自然语言生成计划」，也不会出现在「已完成」。在 Obsidian 里改这一节，DayList 会重新读入。
+
+## 专注
+
+主界面顶部有一块轻量番茄钟：开始、暂停、重置。预设是 25/5、15/3 和 50/10。正在计时的时候换不了预设。到点在屏幕左下角弹出一张没有声音的小卡片，可以开始休息或再来一轮；任务提醒仍在右下角，互不遮挡。
+
+选择的时长记在 `%AppData%\DayList\settings.json`（`focusMinutes`、`breakMinutes`）。进行中的倒计时不写入磁盘，退出就停。它用自己的计时器，不占用提醒轮询，也不参与完成庆祝。
 
 ## 提醒
 
@@ -97,10 +105,10 @@ API Key 以明文保存在本机的设置文件里，不会写进笔记。
 本机需安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) 与 [Inno Setup 6](https://jrsoftware.org/isinfo.php)。在仓库根目录：
 
 ```powershell
-  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.1.9
+  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.0
 ```
 
-完成后得到 `dist\DayList-Setup-1.1.9.exe`（自包含 win-x64）。
+完成后得到 `dist\DayList-Setup-1.2.0.exe`（自包含 win-x64）。
 
 ## 测试
 

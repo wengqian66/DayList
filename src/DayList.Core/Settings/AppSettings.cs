@@ -36,6 +36,10 @@ public sealed class AppSettings
 
     public string Hotkey { get; set; } = "Ctrl+Shift+D";
 
+    public int FocusMinutes { get; set; } = 25;
+
+    public int BreakMinutes { get; set; } = 5;
+
     public double? WindowLeft { get; set; }
 
     public double? WindowTop { get; set; }
@@ -70,6 +74,9 @@ public sealed class AppSettings
             : ReportFolder.Replace('\\', '/').Trim().Trim('/');
         ReportFilePattern = string.IsNullOrWhiteSpace(ReportFilePattern) ? "yyyy-MM" : ReportFilePattern.Trim();
         Hotkey = string.IsNullOrWhiteSpace(Hotkey) ? "Ctrl+Shift+D" : Hotkey.Trim();
+        var focus = FocusDuration.Normalize(FocusMinutes, BreakMinutes);
+        FocusMinutes = focus.FocusMinutes;
+        BreakMinutes = focus.BreakMinutes;
         if (WindowWidth is <= 0)
             WindowWidth = null;
         if (WindowHeight is <= 0)
@@ -104,6 +111,8 @@ public sealed class AppSettings
             MinimizeToTray = MinimizeToTray,
             StartMinimizedToTray = StartMinimizedToTray,
             Hotkey = Hotkey,
+            FocusMinutes = FocusMinutes,
+            BreakMinutes = BreakMinutes,
             WindowLeft = WindowLeft,
             WindowTop = WindowTop,
             WindowWidth = WindowWidth,
