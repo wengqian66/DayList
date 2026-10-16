@@ -1164,8 +1164,9 @@ public sealed partial class MainPage : Page
             if (!TryAppendOnDate(date, title, category))
                 return;
             AddBox.Text = "";
+            string? savedTime = null;
             var reminded = parsed.Reminder is TimeOnly clock
-                && TrySaveReminder(null, title, date, clock, out var savedTime);
+                && TrySaveReminder(null, title, date, clock, out savedTime);
             ShowStatus(QuickAddStatus(title, date, category, parsed, reminded, savedTime), InfoBarSeverity.Success);
             KeepAddFocus();
             return;
