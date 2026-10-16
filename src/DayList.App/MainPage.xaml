@@ -551,9 +551,9 @@
 </Grid>
         </Border>
 
-        <!-- Main pane -->
+        <!-- Main pane. Confetti sits on a sibling so it cannot change row heights. -->
+        <Grid Grid.Column="1">
         <Grid
-            Grid.Column="1"
             Padding="22,14,22,16"
             RowDefinitions="Auto,Auto,*,Auto"
             RowSpacing="10">
@@ -1043,6 +1043,16 @@
                     Content="选择库文件夹"
                     Style="{StaticResource AccentButtonStyle}" />
             </StackPanel>
+        </Grid>
+        <!-- Day-complete confetti. Stays laid out (never Collapsed) and is
+             not a storyboard target. Pieces are composition sprites, so this
+             overlay cannot repeat the 1.1.8 TargetName fail-fast. -->
+        <Grid
+            x:Name="ConfettiHost"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            IsHitTestVisible="False"
+            Visibility="Visible" />
         </Grid>
     </Grid>
 </Page>
