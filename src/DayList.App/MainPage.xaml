@@ -247,12 +247,17 @@
         </DataTemplate>
 
         <DataTemplate x:Key="OverdueItemTemplate" x:DataType="local:OverdueRow">
-            <Grid Padding="2,3" ColumnDefinitions="40,*,Auto" ColumnSpacing="8">
+            <Grid Padding="2,3" ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
                 <TextBlock
                     VerticalAlignment="Center"
                     FontSize="12"
                     Foreground="{StaticResource SoftMutedInkBrush}"
-                    Text="{x:Bind DateLabel, Mode=OneTime}" />
+                    Text="{x:Bind DateText, Mode=OneTime}" />
                 <TextBlock
                     Grid.Column="1"
                     VerticalAlignment="Center"

@@ -369,20 +369,20 @@ public sealed class OverdueRow
     public OverdueRow(OverdueTaskItem item)
     {
         Item = item;
-        DateLabel = item.Date.ToString("M/d");
+        DateText = item.Date.ToString("M/d");
         Text = item.Text;
         CategoryLabel = DayTaskCategory.Display(item.Category);
     }
 
     public OverdueTaskItem Item { get; }
 
-    public string DateLabel { get; }
+    public string DateText { get; }
 
     public string Text { get; }
 
     public string CategoryLabel { get; }
 
-    public override string ToString() => "[" + DateLabel + "] " + Text + "  (点击移到今天)";
+    public override string ToString() => "[" + DateText + "] " + Text + "  (点击移到今天)";
 }
 
 public sealed class ListItemTemplateSelector : Microsoft.UI.Xaml.Controls.DataTemplateSelector
