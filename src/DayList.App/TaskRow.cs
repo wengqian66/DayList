@@ -126,6 +126,27 @@ public sealed class TaskRow : INotifyPropertyChanged
     public Visibility ReminderIconVisibility =>
         string.IsNullOrEmpty(_reminderTime) ? Visibility.Visible : Visibility.Collapsed;
 
+    private bool _isDropTarget;
+
+    public bool IsDropTarget
+    {
+        get => _isDropTarget;
+        set
+        {
+            if (_isDropTarget == value)
+                return;
+            _isDropTarget = value;
+            Notify();
+            Notify(nameof(RowBackground));
+        }
+    }
+
+    public Brush RowBackground => _isDropTarget ? DropBrush : ClearBrush;
+
+    private static readonly SolidColorBrush DropBrush = new(Color.FromArgb(48, 0x5B, 0x9B, 0xD5));
+
+    private static readonly SolidColorBrush ClearBrush = new(Color.FromArgb(0, 0, 0, 0));
+
     public int OriginIndex { get; set; } = -1;
 
     public double TextOpacity => IsDone ? 0.5 : 1;
@@ -286,6 +307,28 @@ public sealed class CategoryCardModel : INotifyPropertyChanged
     public SolidColorBrush HeaderWashBrush { get; }
 
     public ObservableCollection<TaskRow> Tasks { get; } = new();
+
+    private bool _isDropTarget;
+
+    public bool IsDropTarget
+    {
+        get => _isDropTarget;
+        set
+        {
+            if (_isDropTarget == value)
+                return;
+            _isDropTarget = value;
+            Notify();
+            Notify(nameof(CardBorderBrush));
+            Notify(nameof(CardBorderThickness));
+        }
+    }
+
+    public Brush CardBorderBrush => _isDropTarget
+        ? AccentBrush
+        : (Brush)Application.Current.Resources["SoftLineBrush"];
+
+    public Thickness CardBorderThickness => new(_isDropTarget ? 2 : 1);
 
     public int DoneCount
     {

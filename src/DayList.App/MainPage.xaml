@@ -12,13 +12,17 @@
             <Grid
                 Padding="4,3"
                 AllowDrop="True"
+                Background="{x:Bind RowBackground, Mode=OneWay}"
                 ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto"
                 ColumnSpacing="6"
                 MinHeight="36"
+                ContextRequested="TaskRow_ContextRequested"
                 DragOver="TaskRow_DragOver"
                 Drop="TaskRow_Drop"
+                Holding="TaskRow_Holding"
                 PointerEntered="TaskRow_PointerEntered"
-                PointerExited="TaskRow_PointerExited">
+                PointerExited="TaskRow_PointerExited"
+                RightTapped="TaskRow_RightTapped">
                 <Border
                     Width="18"
                     Height="32"
@@ -26,7 +30,7 @@
                     Background="Transparent"
                     CanDrag="True"
                     DragStarting="DragHandle_DragStarting"
-                    ToolTipService.ToolTip="拖动手柄：上下排序，或拖到分类标题改分类">
+                    ToolTipService.ToolTip="拖动手柄排序。拖到别的分类卡片上可改类">
                     <FontIcon
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
@@ -45,11 +49,14 @@
                 <Border Grid.Column="2" Width="{x:Bind IndentWidth, Mode=OneWay}" />
                 <TextBox
                     Grid.Column="3"
+                    ContextRequested="TaskRow_ContextRequested"
                     GotFocus="TaskText_GotFocus"
+                    Holding="TaskRow_Holding"
                     KeyDown="TaskText_KeyDown"
                     KeyUp="TaskText_KeyUp"
                     LostFocus="TaskText_LostFocus"
                     Opacity="{x:Bind TextOpacity, Mode=OneWay}"
+                    RightTapped="TaskRow_RightTapped"
                     Style="{StaticResource TaskTextStyle}"
                     Text="{x:Bind Text, Mode=TwoWay}"
                     TextWrapping="NoWrap" />
@@ -98,125 +105,94 @@
         </DataTemplate>
 
         <DataTemplate x:Key="CategoryCardTemplate" x:DataType="local:CategoryCardModel">
-            <Border
-                Margin="0,0,0,14"
-                AllowDrop="True"
-                Background="{x:Bind CardFillBrush, Mode=OneTime}"
-                BorderBrush="{x:Bind SoftAccentBrush, Mode=OneTime}"
-                BorderThickness="1"
-                CornerRadius="16"
-                DragOver="Header_DragOver"
-                Drop="Header_Drop"
-                ToolTipService.ToolTip="拖到卡片上可改分类">
-                <Grid ColumnDefinitions="5,*">
-                    <!-- Left accent bar -->
-                    <Border
-                        Background="{x:Bind AccentBrush, Mode=OneTime}"
-                        CornerRadius="16,0,0,16" />
-                    <Grid Grid.Column="1" Padding="0,0,0,6">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <!-- Tinted header wash -->
-                        <Border
-                            Padding="14,12,14,10"
-                            Background="{x:Bind HeaderWashBrush, Mode=OneTime}"
-                            CornerRadius="0,16,0,0">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
-                                <Border
-                                    Width="34"
-                                    Height="34"
-                                    Background="{StaticResource SoftCardBrush}"
-                                    CornerRadius="10"
-                                    VerticalAlignment="Center">
-                                    <FontIcon
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontSize="15"
-                                        Foreground="{x:Bind AccentBrush, Mode=OneTime}"
-                                        Glyph="{x:Bind Glyph, Mode=OneTime}" />
-                                </Border>
+            <local:SoftCard Style="{StaticResource SoftLiftCardStyle}">
+                <Border
+                    AllowDrop="True"
+                    Background="{StaticResource SoftCardBrush}"
+                    BorderBrush="{x:Bind CardBorderBrush, Mode=OneWay}"
+                    BorderThickness="{x:Bind CardBorderThickness, Mode=OneWay}"
+                    CornerRadius="16"
+                    DragOver="Header_DragOver"
+                    Drop="Header_Drop"
+                    Padding="16,14,14,8"
+                    ToolTipService.ToolTip="拖到卡片上可改分类">
+                    <StackPanel Spacing="2">
+                        <Grid Margin="0,0,0,8" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                            <Ellipse
+                                Width="8"
+                                Height="8"
+                                VerticalAlignment="Center"
+                                Fill="{x:Bind AccentBrush, Mode=OneTime}" />
+                            <TextBlock
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="{StaticResource SoftInkBrush}"
+                                Text="{x:Bind Title, Mode=OneTime}"
+                                TextTrimming="CharacterEllipsis" />
+                            <TextBlock
+                                Grid.Column="2"
+                                VerticalAlignment="Center"
+                                FontSize="13"
+                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                Text="{x:Bind FractionText, Mode=OneWay}" />
+                            <Grid
+                                Grid.Column="3"
+                                Width="36"
+                                Height="36"
+                                VerticalAlignment="Center">
+                                <ProgressRing
+                                    Width="32"
+                                    Height="32"
+                                    Foreground="{x:Bind AccentBrush, Mode=OneTime}"
+                                    IsIndeterminate="False"
+                                    Maximum="1"
+                                    Minimum="0"
+                                    Value="{x:Bind ProgressValue, Mode=OneWay}" />
                                 <TextBlock
-                                    Grid.Column="1"
+                                    HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
-                                    FontSize="16"
+                                    FontSize="10"
                                     FontWeight="SemiBold"
                                     Foreground="{StaticResource SoftInkBrush}"
-                                    Text="{x:Bind Title, Mode=OneTime}"
-                                    TextTrimming="CharacterEllipsis" />
-                                <TextBlock
-                                    Grid.Column="2"
-                                    VerticalAlignment="Center"
-                                    FontSize="13"
-                                    Foreground="{StaticResource SoftMutedInkBrush}"
-                                    Text="{x:Bind FractionText, Mode=OneWay}" />
-                                <Grid
-                                    Grid.Column="3"
-                                    Width="40"
-                                    Height="40"
-                                    VerticalAlignment="Center">
-                                    <ProgressRing
-                                        Width="36"
-                                        Height="36"
-                                        Foreground="{x:Bind AccentBrush, Mode=OneTime}"
-                                        IsIndeterminate="False"
-                                        Maximum="1"
-                                        Minimum="0"
-                                        Value="{x:Bind ProgressValue, Mode=OneWay}" />
-                                    <TextBlock
-                                        HorizontalAlignment="Center"
-                                        VerticalAlignment="Center"
-                                        FontSize="10"
-                                        FontWeight="SemiBold"
-                                        Foreground="{StaticResource SoftInkBrush}"
-                                        Text="{x:Bind ProgressLabel, Mode=OneWay}" />
-                                </Grid>
+                                    Text="{x:Bind ProgressLabel, Mode=OneWay}" />
                             </Grid>
-                        </Border>
-                        <Border
-                            Grid.Row="1"
-                            Padding="10,4,10,8"
-                            Background="#CCFFFBF6"
-                            CornerRadius="0,0,16,0">
-                            <ItemsControl
-                                ItemTemplate="{StaticResource TaskItemTemplate}"
-                                ItemsSource="{x:Bind Tasks, Mode=OneWay}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                            </ItemsControl>
-                        </Border>
-                    </Grid>
-                </Grid>
-            </Border>
+                        </Grid>
+                        <ItemsControl
+                            ItemTemplate="{StaticResource TaskItemTemplate}"
+                            ItemsSource="{x:Bind Tasks, Mode=OneWay}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </local:SoftCard>
         </DataTemplate>
 
         <!-- Completed view: same grouping, no progress ring or N/N score. -->
         <DataTemplate x:Key="CompletedCardTemplate" x:DataType="local:CategoryCardModel">
-            <Border
-                Margin="0,0,0,10"
-                AllowDrop="True"
-                Background="{StaticResource SoftCardBrush}"
-                BorderBrush="{StaticResource SoftLineBrush}"
-                BorderThickness="1"
-                CornerRadius="14"
-                DragOver="Header_DragOver"
-                Drop="Header_Drop"
-                ToolTipService.ToolTip="拖到卡片上可改分类">
-                <Grid ColumnDefinitions="4,*">
-                    <Border
-                        Background="{x:Bind AccentBrush, Mode=OneTime}"
-                        CornerRadius="14,0,0,14" />
-                    <StackPanel Grid.Column="1" Padding="12,8,12,6" Spacing="0">
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Padding="0,2,0,4">
-                            <FontIcon
+            <local:SoftCard Padding="8,2,8,12" Style="{StaticResource SoftLiftCardStyle}">
+                <Border
+                    AllowDrop="True"
+                    Background="{StaticResource SoftCardBrush}"
+                    BorderBrush="{x:Bind CardBorderBrush, Mode=OneWay}"
+                    BorderThickness="{x:Bind CardBorderThickness, Mode=OneWay}"
+                    CornerRadius="16"
+                    DragOver="Header_DragOver"
+                    Drop="Header_Drop"
+                    Padding="16,12,14,8"
+                    ToolTipService.ToolTip="拖到卡片上可改分类">
+                    <StackPanel Spacing="2">
+                        <Grid Margin="0,0,0,6" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <Ellipse
+                                Width="8"
+                                Height="8"
                                 VerticalAlignment="Center"
-                                FontSize="13"
-                                Foreground="{x:Bind AccentBrush, Mode=OneTime}"
-                                Glyph="{x:Bind Glyph, Mode=OneTime}" />
+                                Fill="{x:Bind AccentBrush, Mode=OneTime}" />
                             <TextBlock
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
@@ -242,8 +218,8 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                     </StackPanel>
-                </Grid>
-            </Border>
+                </Border>
+            </local:SoftCard>
         </DataTemplate>
 
         <DataTemplate x:Key="OverdueItemTemplate" x:DataType="local:OverdueRow">
@@ -813,26 +789,24 @@
                     HorizontalScrollMode="Disabled"
                     VerticalScrollBarVisibility="Auto"
                     VerticalScrollMode="Enabled">
-                    <StackPanel Padding="0,0,4,8">
-                        <Border
+                    <StackPanel Padding="0,6,4,8">
+                        <local:SoftCard
                             x:Name="InspirationStrip"
-                            Margin="0,0,0,14"
-                            Background="{StaticResource SoftCardBrush}"
-                            BorderBrush="{StaticResource SoftLineBrush}"
-                            BorderThickness="1"
-                            CornerRadius="16"
+                            Style="{StaticResource SoftLiftCardStyle}"
                             Visibility="Collapsed">
-                            <Grid ColumnDefinitions="5,*">
-                                <Border
-                                    Background="{StaticResource SoftAmberBrush}"
-                                    CornerRadius="16,0,0,16" />
-                                <StackPanel Grid.Column="1" Padding="12,10,12,8" Spacing="2">
+                            <Border
+                                Background="{StaticResource SoftCardBrush}"
+                                BorderBrush="{StaticResource SoftLineBrush}"
+                                BorderThickness="1"
+                                CornerRadius="16"
+                                Padding="16,12,14,8">
+                                <StackPanel Spacing="2">
                                     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
-                                        <FontIcon
+                                        <Ellipse
+                                            Width="8"
+                                            Height="8"
                                             VerticalAlignment="Center"
-                                            FontSize="14"
-                                            Foreground="{StaticResource SoftAmberInkBrush}"
-                                            Glyph="&#xEA80;" />
+                                            Fill="{StaticResource SoftAmberInkBrush}" />
                                         <StackPanel
                                             Grid.Column="1"
                                             VerticalAlignment="Center"
@@ -900,8 +874,8 @@
                                         </ItemsControl>
                                     </ScrollViewer>
                                 </StackPanel>
-                            </Grid>
-                        </Border>
+                            </Border>
+                        </local:SoftCard>
                         <ItemsControl
                             x:Name="CategoryCards"
                             ItemTemplate="{StaticResource CategoryCardTemplate}">
@@ -981,7 +955,7 @@
                         BorderThickness="0"
                         FontSize="14"
                         KeyDown="AddBox_KeyDown"
-                        PlaceholderText="添加任务…"
+                        PlaceholderText="添加任务…  明天 9 点 写周报 #工作"
                         VerticalAlignment="Center" />
                     <ComboBox
                         x:Name="CategoryPicker"
