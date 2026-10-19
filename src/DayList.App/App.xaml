@@ -51,8 +51,14 @@
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Padding" Value="4,6" />
                 <Setter Property="FontSize" Value="14" />
-                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+                <Setter Property="MinWidth" Value="0" />
                 <Setter Property="MinHeight" Value="34" />
+                <Setter Property="AcceptsReturn" Value="False" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="ScrollViewer.HorizontalScrollMode" Value="Disabled" />
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
             </Style>
 
