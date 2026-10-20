@@ -350,23 +350,14 @@ public sealed partial class MainPage : Page
             if (_nav == MainNav.Completed)
                 source = _rows.Where(row => row.IsDone);
 
-            foreach (var group in GroupRows(source))
+            // Saved categories with no tasks this day stay in the picker only.
+            foreach (var group in CategoryGrouping.ForMainList(source, row => row.Category))
             {
                 var card = new CategoryCardModel(group.Key);
                 foreach (var row in group.Items)
                     card.Tasks.Add(row);
                 card.RefreshStats();
                 _cards.Add(card);
-            }
-
-            if (_nav == MainNav.Today)
-            {
-                foreach (var name in CategoryCatalog.WithoutTasks(_settings.TaskCategories, _rows.Select(row => row.Category)))
-                {
-                    var card = new CategoryCardModel(name);
-                    card.RefreshStats();
-                    _cards.Add(card);
-                }
             }
         }
         finally
@@ -390,9 +381,6 @@ public sealed partial class MainPage : Page
             CategoryCards.ItemTemplate = template;
         }
     }
-
-    private static List<(string Key, List<TaskRow> Items)> GroupRows(IEnumerable<TaskRow> rows) =>
-        CategoryGrouping.Group(rows, row => row.Category);
 
     private void RefreshOverdue()
     {
