@@ -3606,13 +3606,13 @@ public sealed partial class MainPage : Page
 
     private void TaskRow_GotFocus(object sender, RoutedEventArgs e)
     {
-        if (sender is Grid grid)
+        if (FindTaskRowGrid(sender) is Grid grid)
             SetRowHoverActions(grid, shown: true);
     }
 
     private void TaskRow_LostFocus(object sender, RoutedEventArgs e)
     {
-        if (sender is not Grid grid)
+        if (FindTaskRowGrid(sender) is not Grid grid)
             return;
         // Focus may already be on the next control inside this row. Check after the move.
         DispatcherQueue.TryEnqueue(() =>
