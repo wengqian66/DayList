@@ -1359,7 +1359,7 @@
         </Grid>
         <!-- Zero-size target so a task editor can give up focus. Keyboard tab
              is forwarded in code and does not stop on this control. -->
-        <Control
+        <ContentControl
             x:Name="EditorFocusSink"
             Grid.ColumnSpan="2"
             Width="0"
