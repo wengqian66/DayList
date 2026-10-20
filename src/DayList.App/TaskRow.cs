@@ -17,6 +17,11 @@ public sealed class TaskRow : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    public TaskRow()
+    {
+        Attachments.CollectionChanged += (_, _) => Notify(nameof(AttachmentsVisibility));
+    }
+
     public bool IsDone
     {
         get => _isDone;
@@ -149,19 +154,42 @@ public sealed class TaskRow : INotifyPropertyChanged
 
     public int OriginIndex { get; set; } = -1;
 
+    public ObservableCollection<TaskAttachmentRow> Attachments { get; } = new();
+
+    public Visibility AttachmentsVisibility =>
+        Attachments.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+
     public double TextOpacity => IsDone ? 0.5 : 1;
 
-    public static TaskRow From(DayTask task) => new()
+    public static TaskRow From(DayTask task, string? vaultPath = null)
     {
-        IsDone = task.IsDone,
-        Text = task.Text,
-        Category = task.Category,
-        Indent = task.Indent,
-        Bullet = task.Bullet,
-        DoneMark = task.DoneMark,
-        RawLine = task.RawLine,
-        OriginIndex = task.OriginIndex
-    };
+        var row = new TaskRow
+        {
+            IsDone = task.IsDone,
+            Text = task.Text,
+            Category = task.Category,
+            Indent = task.Indent,
+            Bullet = task.Bullet,
+            DoneMark = task.DoneMark,
+            RawLine = task.RawLine,
+            OriginIndex = task.OriginIndex
+        };
+        foreach (var attachment in task.Attachments)
+            row.Attachments.Add(TaskAttachmentRow.From(attachment, vaultPath));
+        return row;
+    }
+
+    public void AddAttachment(TaskAttachment attachment, string? vaultPath)
+    {
+        Attachments.Add(TaskAttachmentRow.From(attachment, vaultPath));
+        RawLine = null;
+    }
+
+    public void RemoveAttachment(TaskAttachmentRow attachment)
+    {
+        Attachments.Remove(attachment);
+        RawLine = null;
+    }
 
     public DayTask ToTask() => new()
     {
@@ -172,7 +200,8 @@ public sealed class TaskRow : INotifyPropertyChanged
         Bullet = Bullet,
         DoneMark = DoneMark,
         RawLine = RawLine,
-        OriginIndex = OriginIndex
+        OriginIndex = OriginIndex,
+        Attachments = Attachments.Select(item => item.ToAttachment()).ToList()
     };
 
     public void IndentIn()
