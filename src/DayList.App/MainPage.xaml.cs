@@ -45,9 +45,7 @@ public sealed partial class MainPage : Page
     private bool _closed;
     private bool _rebuildingPicker;
     private bool _categoryPromptOpen;
-    private bool _pickerDeleteInProgress;
     private bool _pickerDeleteCommit;
-    private string? _pickerDeleteRestore;
     private string _composeCategory = DayTaskCategory.UncategorizedKey;
     private TaskRow? _dragRow;
     private TaskRow? _dropRow;
@@ -618,7 +616,7 @@ public sealed partial class MainPage : Page
 
     private async void CategoryPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_rebuildingPicker || CategoryPicker.SelectedItem is null)
+        if (_rebuildingPicker || _pickerDeleteCommit || CategoryPicker.SelectedItem is null)
             return;
 
         var selected = PickerLabel(CategoryPicker.SelectedItem);
@@ -654,9 +652,6 @@ public sealed partial class MainPage : Page
         if (_categoryPromptOpen || _pickerDeleteCommit)
             return;
 
-        if (_pickerDeleteInProgress)
-            AbandonPickerDelete();
-
         FocusAddBoxAfterCategory();
     }
 
@@ -665,87 +660,87 @@ public sealed partial class MainPage : Page
         if (sender is not FrameworkElement element)
             return;
 
-        void HideTrashOutsideDropDown()
+        void SyncTrash()
         {
             if (element.FindName("PickerDeleteButton") is not Button button)
                 return;
-            if (HasAncestor<ComboBoxItem>(element))
+            if (button.DataContext is not CategoryPickerItem item || !item.CanDelete)
                 return;
 
-            // The closed combo reuses this template. A trash icon there is easy
-            // to hit by accident and crowds the narrow selection box.
-            button.Visibility = Visibility.Collapsed;
-            button.IsHitTestVisible = false;
+            // The closed combo reuses this template. Keep the trash only inside
+            // the open drop-down, and undo a pass that ran before the row was
+            // parented under a ComboBoxItem.
+            var inDropDown = HasAncestor<ComboBoxItem>(element);
+            button.Visibility = inDropDown ? Visibility.Visible : Visibility.Collapsed;
+            button.IsHitTestVisible = inDropDown;
         }
 
-        HideTrashOutsideDropDown();
-        element.DispatcherQueue.TryEnqueue(HideTrashOutsideDropDown);
+        SyncTrash();
+        element.DispatcherQueue.TryEnqueue(SyncTrash);
+        element.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, SyncTrash);
     }
 
-    private void CategoryPickerDelete_PointerPressed(object sender, PointerRoutedEventArgs e)
+    private void CategoryPickerDelete_Click(object sender, RoutedEventArgs e)
     {
-        // Snapshot the category before this row can become the selection.
-        // Leave the press unhandled so the button keeps pointer capture.
-        _pickerDeleteRestore ??= _composeCategory;
-        _pickerDeleteInProgress = true;
-    }
-
-    private async void CategoryPickerDelete_PointerReleased(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement element)
-            return;
-
-        // Handled before the button raises Click and before the combo row
-        // selects. Otherwise the popup closes and the delete never runs.
+        // Button marks PointerPressed and PointerReleased handled in its class
+        // handler, so XAML handlers for those events never run. Click is the
+        // event the button actually raises. The combo row selects only on an
+        // unhandled pointer release, so this click does not change category.
         e.Handled = true;
-
-        var point = e.GetCurrentPoint(element).Position;
-        var inside = point.X >= 0 && point.Y >= 0
-            && point.X <= element.ActualWidth
-            && point.Y <= element.ActualHeight;
-        if (!inside || element.DataContext is not CategoryPickerItem item || !item.CanDelete || _pickerDeleteCommit)
-        {
-            if (!_pickerDeleteCommit)
-                AbandonPickerDelete();
+        if (_pickerDeleteCommit || _closed)
             return;
-        }
+
+        var item = FindPickerItem(sender);
+        if (!CategoryCatalog.TryAcceptPickerDelete(
+                item?.Label,
+                item?.CanDelete == true,
+                _composeCategory,
+                out var categoryToDelete,
+                out var composeCategory))
+            return;
 
         _pickerDeleteCommit = true;
-        if (_pickerDeleteRestore is not null)
-            _composeCategory = _pickerDeleteRestore;
+        _composeCategory = composeCategory;
 
-        try
-        {
-            if (CategoryPicker is not null)
-                CategoryPicker.IsDropDownOpen = false;
-            SelectComposeCategoryInPicker();
-            await ConfirmDeleteCategoryAsync(item.Label);
-        }
-        finally
-        {
+        // Close the popup on the next tick. Doing it inside this Click would
+        // unload the button while its pointer-release is still on the stack.
+        var queued = DispatcherQueue.TryEnqueue(
+            Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal,
+            async () =>
+            {
+                try
+                {
+                    if (_closed)
+                        return;
+
+                    if (CategoryPicker is not null)
+                        CategoryPicker.IsDropDownOpen = false;
+                    SelectComposeCategoryInPicker();
+                    await ConfirmDeleteCategoryAsync(categoryToDelete);
+                }
+                finally
+                {
+                    _pickerDeleteCommit = false;
+                    if (!_closed)
+                        FocusAddBoxAfterCategory();
+                }
+            });
+
+        if (!queued)
             _pickerDeleteCommit = false;
-            _pickerDeleteInProgress = false;
-            _pickerDeleteRestore = null;
+    }
+
+    private static CategoryPickerItem? FindPickerItem(object sender)
+    {
+        for (DependencyObject? current = sender as DependencyObject;
+             current is not null;
+             current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is FrameworkElement { DataContext: CategoryPickerItem item })
+                return item;
         }
 
-        FocusAddBoxAfterCategory();
-    }
-
-    private void CategoryPickerDelete_PointerCanceled(object sender, PointerRoutedEventArgs e)
-    {
-        e.Handled = true;
-        if (_pickerDeleteCommit)
-            return;
-        AbandonPickerDelete();
-    }
-
-    private void AbandonPickerDelete()
-    {
-        if (_pickerDeleteRestore is not null)
-            _composeCategory = _pickerDeleteRestore;
-        _pickerDeleteInProgress = false;
-        _pickerDeleteRestore = null;
-        SelectComposeCategoryInPicker();
+        return null;
     }
 
     private static bool HasAncestor<T>(DependencyObject? start) where T : DependencyObject
@@ -767,7 +762,7 @@ public sealed partial class MainPage : Page
     {
         void Later()
         {
-            if (_closed || _categoryPromptOpen || AddBox is null)
+            if (_closed || _categoryPromptOpen || _pickerDeleteCommit || AddBox is null)
                 return;
             AddBox.Focus(FocusState.Programmatic);
             var len = AddBox.Text?.Length ?? 0;
