@@ -29,14 +29,83 @@
                 <EasingDoubleKeyFrame KeyTime="0:0:0.32" Value="1" />
             </DoubleAnimationUsingKeyFrames>
         </Storyboard>
+        <DataTemplate x:Key="AttachmentChipTemplate" x:DataType="local:TaskAttachmentRow">
+            <Grid Margin="0,2,8,4" VerticalAlignment="Center">
+                <Button
+                    MinWidth="0"
+                    MinHeight="0"
+                    Padding="0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Click="AttachmentOpen_Click"
+                    ToolTipService.ToolTip="{x:Bind ToolTip, Mode=OneTime}">
+                    <Grid>
+                        <Grid
+                            Width="72"
+                            Height="48"
+                            Visibility="{x:Bind ImageSlotVisibility, Mode=OneWay}">
+                            <Border Background="#F0E8DCC8" CornerRadius="8" />
+                            <Image
+                                Stretch="UniformToFill"
+                                Source="{x:Bind Thumbnail, Mode=OneWay}" />
+                        </Grid>
+                        <Border
+                            Padding="8,4"
+                            VerticalAlignment="Center"
+                            Background="#F0E8DCC8"
+                            CornerRadius="8"
+                            Visibility="{x:Bind ChipVisibility, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="11"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource SoftMutedInkBrush}"
+                                    Text="{x:Bind ExtensionLabel, Mode=OneTime}" />
+                                <TextBlock
+                                    MaxWidth="140"
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    Foreground="{StaticResource SoftInkBrush}"
+                                    Text="{x:Bind DisplayName, Mode=OneTime}"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Button>
+                <Button
+                    Width="18"
+                    Height="18"
+                    MinWidth="0"
+                    MinHeight="0"
+                    Margin="0,-4,-6,0"
+                    Padding="0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    AutomationProperties.Name="移除附件"
+                    Background="#E6FFFBF6"
+                    BorderThickness="0"
+                    Click="AttachmentRemove_Click"
+                    CornerRadius="9"
+                    ToolTipService.ToolTip="移除附件">
+                    <FontIcon
+                        FontSize="8"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Glyph="&#xE711;" />
+                </Button>
+            </Grid>
+        </DataTemplate>
         <DataTemplate x:Key="TaskItemTemplate" x:DataType="local:TaskRow">
             <Grid
                 Padding="4,3"
                 AllowDrop="True"
                 Background="{x:Bind RowBackground, Mode=OneWay}"
-                ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto"
+                ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto"
                 ColumnSpacing="6"
                 MinHeight="36"
+                RowDefinitions="Auto,Auto"
                 ContextRequested="TaskRow_ContextRequested"
                 DragOver="TaskRow_DragOver"
                 Drop="TaskRow_Drop"
@@ -44,9 +113,6 @@
                 PointerEntered="TaskRow_PointerEntered"
                 PointerExited="TaskRow_PointerExited"
                 RightTapped="TaskRow_RightTapped">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
                 <Border
                     Width="18"
                     Height="32"
@@ -127,6 +193,15 @@
                 <Button
                     Grid.Column="6"
                     VerticalAlignment="Center"
+                    AutomationProperties.Name="添加附件"
+                    Click="Attach_Click"
+                    Style="{StaticResource QuietButtonStyle}"
+                    ToolTipService.ToolTip="添加附件">
+                    <FontIcon FontSize="14" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE16C;" />
+                </Button>
+                <Button
+                    Grid.Column="7"
+                    VerticalAlignment="Center"
                     AutomationProperties.Name="删除任务"
                     Click="Delete_Click"
                     Opacity="0.28"
@@ -134,6 +209,20 @@
                     Tag="delete">
                     <FontIcon FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE711;" />
                 </Button>
+                <ItemsControl
+                    Grid.Row="1"
+                    Grid.Column="3"
+                    Grid.ColumnSpan="5"
+                    HorizontalAlignment="Stretch"
+                    ItemTemplate="{StaticResource AttachmentChipTemplate}"
+                    ItemsSource="{x:Bind Attachments, Mode=OneWay}"
+                    Visibility="{x:Bind AttachmentsVisibility, Mode=OneWay}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ItemsWrapGrid Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
             </Grid>
         </DataTemplate>
 

@@ -286,7 +286,7 @@ public sealed partial class MainPage : Page
         {
             _rows.Clear();
             foreach (var task in snapshot.Tasks)
-                _rows.Add(TaskRow.From(task));
+                _rows.Add(TaskRow.From(task, _settings.VaultPath));
         }
         finally
         {
@@ -970,6 +970,10 @@ public sealed partial class MainPage : Page
         remind.Click += async (_, _) => await PromptReminderAsync(row);
         flyout.Items.Add(remind);
 
+        var attach = new MenuFlyoutItem { Text = "添加附件" };
+        attach.Click += async (_, _) => await AddAttachmentsAsync(row);
+        flyout.Items.Add(attach);
+
         var tomorrow = new MenuFlyoutItem { Text = "挪到明天" };
         tomorrow.Click += (_, _) => MoveTaskToNextDay(row);
         flyout.Items.Add(tomorrow);
@@ -1095,6 +1099,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        var paths = ManagedPaths(row);
         var index = _rows.IndexOf(row);
         if (index < 0)
             return;
@@ -1150,6 +1155,7 @@ public sealed partial class MainPage : Page
 
         ForgetReminder(row);
         ApplyInspirations(nextEntries);
+        ReleaseManagedFiles(paths);
         ShowStatus("已转为灵感。", InfoBarSeverity.Success);
     }
 
@@ -1674,6 +1680,190 @@ public sealed partial class MainPage : Page
             _rows.Insert(insertAt, row);
     }
 
+    private async void Attach_Click(object sender, RoutedEventArgs e)
+    {
+        if (Suppressed || sender is not FrameworkElement element || element.DataContext is not TaskRow row)
+            return;
+        await AddAttachmentsAsync(row);
+    }
+
+    private async Task AddAttachmentsAsync(TaskRow row)
+    {
+        if (_closed || Suppressed)
+            return;
+        if (!_settings.HasVault)
+        {
+            ShowStatus("先连接 Obsidian 库，附件才会复制进库。", InfoBarSeverity.Warning, "选择库", () => PickVault_Click(this, new RoutedEventArgs()));
+            return;
+        }
+
+        if (_pendingExternal)
+        {
+            ShowStatus("先处理笔记的外部更新，再添加附件。", InfoBarSeverity.Warning);
+            return;
+        }
+
+        IReadOnlyList<string> paths;
+        try
+        {
+            paths = await FileBrowser.PickAttachmentsAsync(App.Window);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("无法打开文件选择器。" + ex.Message, InfoBarSeverity.Error);
+            return;
+        }
+
+        if (_closed || paths.Count == 0)
+            return;
+
+        var added = 0;
+        string? error = null;
+        foreach (var path in paths)
+        {
+            try
+            {
+                var imported = AttachmentVault.Import(_settings.VaultPath, _date, path);
+                if (row.Attachments.Any(item =>
+                        string.Equals(item.RelativePath, imported.RelativePath, StringComparison.OrdinalIgnoreCase)))
+                {
+                    error = "这个文件已经附在这条任务上。";
+                    continue;
+                }
+
+                row.AddAttachment(imported, _settings.VaultPath);
+                added++;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+        }
+
+        if (added > 0)
+            Persist();
+
+        if (error is not null)
+        {
+            var suffix = added > 0 ? " 已添加 " + added.ToString(CultureInfo.InvariantCulture) + " 个。" : "";
+            ShowStatus(error + suffix, InfoBarSeverity.Error);
+            return;
+        }
+
+        if (added == 1)
+            ShowStatus("已添加附件。", InfoBarSeverity.Success);
+        else if (added > 1)
+            ShowStatus("已添加 " + added.ToString(CultureInfo.InvariantCulture) + " 个附件。", InfoBarSeverity.Success);
+    }
+
+    private async void AttachmentOpen_Click(object sender, RoutedEventArgs e)
+    {
+        if (Suppressed || sender is not FrameworkElement element || element.DataContext is not TaskAttachmentRow chip)
+            return;
+
+        if (string.IsNullOrWhiteSpace(chip.FullPath) || !File.Exists(chip.FullPath))
+        {
+            ShowStatus("附件不在库里了。", InfoBarSeverity.Warning);
+            return;
+        }
+
+        if (!chip.IsImage)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = chip.FullPath,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                ShowStatus("无法打开这个附件。" + ex.Message, InfoBarSeverity.Error);
+            }
+
+            return;
+        }
+
+        var source = await AttachmentImages.LoadAsync(chip.FullPath, 1600);
+        if (source is null)
+        {
+            ShowStatus("这张图暂时预览不了。", InfoBarSeverity.Warning);
+            return;
+        }
+
+        var image = new Image
+        {
+            Source = source,
+            Stretch = Stretch.Uniform,
+            MaxWidth = 720,
+            MaxHeight = 480
+        };
+        var scroll = new ScrollViewer
+        {
+            Content = image,
+            MaxWidth = 740,
+            MaxHeight = 500,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+        var dialog = SoftUi.CreateDialog(
+            XamlRoot,
+            chip.DisplayName,
+            scroll,
+            "关闭",
+            "",
+            ContentDialogButton.Primary);
+        await dialog.ShowAsync();
+    }
+
+    private void AttachmentRemove_Click(object sender, RoutedEventArgs e)
+    {
+        if (Suppressed || sender is not FrameworkElement element || element.DataContext is not TaskAttachmentRow chip)
+            return;
+        if (_pendingExternal)
+        {
+            ShowStatus("先处理笔记的外部更新，再移除附件。", InfoBarSeverity.Warning);
+            return;
+        }
+
+        var row = OwningTaskRow(element);
+        if (row is null)
+            return;
+
+        row.RemoveAttachment(chip);
+        if (Persist())
+            ReleaseManagedFiles(new[] { chip.RelativePath });
+    }
+
+    private static TaskRow? OwningTaskRow(DependencyObject? start)
+    {
+        var current = start;
+        while (current is not null)
+        {
+            if (current is FrameworkElement element && element.DataContext is TaskRow row)
+                return row;
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
+    }
+
+    private static IReadOnlyList<string> ManagedPaths(TaskRow row) =>
+        row.Attachments
+            .Select(item => item.RelativePath)
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .ToArray();
+
+    private void ReleaseManagedFiles(IEnumerable<string> relativePaths)
+    {
+        if (!_settings.HasVault)
+            return;
+
+        foreach (var path in relativePaths.Distinct(StringComparer.OrdinalIgnoreCase))
+            AttachmentVault.TryDeleteIfUnreferenced(_settings.VaultPath, path);
+    }
+
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
         if (Suppressed || (sender as FrameworkElement)?.DataContext is not TaskRow row)
@@ -1684,9 +1874,11 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        var paths = ManagedPaths(row);
         ForgetReminder(row);
         _rows.Remove(row);
-        Persist();
+        if (Persist())
+            ReleaseManagedFiles(paths);
     }
 
     private void TaskDoneChanged(object sender, RoutedEventArgs e)
@@ -1769,7 +1961,7 @@ public sealed partial class MainPage : Page
             return;
         if (sender is TextBox box && box.DataContext is TaskRow row)
         {
-            if (string.IsNullOrWhiteSpace(row.Text))
+            if (string.IsNullOrWhiteSpace(row.Text) && row.Attachments.Count == 0)
             {
                 ForgetReminder(row);
                 _rows.Remove(row);
@@ -2576,7 +2768,7 @@ public sealed partial class MainPage : Page
         try
         {
             foreach (var task in tasks)
-                InsertRow(TaskRow.From(task));
+                InsertRow(TaskRow.From(task, _settings.VaultPath));
         }
         finally
         {

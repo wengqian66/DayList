@@ -47,6 +47,8 @@ public sealed class DayTask
 
     public string? RawLine { get; set; }
 
+    public List<TaskAttachment> Attachments { get; set; } = new();
+
     public int OriginIndex { get; set; } = -1;
 
     public int IndentLevel => MeasureIndent(Indent);
@@ -89,13 +91,15 @@ public sealed class DayTask
         }
 
         var mark = match.Groups["mark"].Value[0];
+        var (text, attachments) = TaskAttachmentSyntax.Split(match.Groups["text"].Value);
         task = new DayTask
         {
             Indent = match.Groups["indent"].Value,
             Bullet = match.Groups["bullet"].Value[0],
             IsDone = mark is 'x' or 'X',
             DoneMark = mark == 'X' ? 'X' : 'x',
-            Text = match.Groups["text"].Value,
+            Text = text,
+            Attachments = attachments,
             RawLine = line
         };
         return true;
@@ -110,7 +114,8 @@ public sealed class DayTask
         Bullet = Bullet,
         DoneMark = DoneMark,
         RawLine = RawLine,
-        OriginIndex = OriginIndex
+        OriginIndex = OriginIndex,
+        Attachments = Attachments.Select(item => item.Copy()).ToList()
     };
 
     public string ToMarkdown()
@@ -120,13 +125,14 @@ public sealed class DayTask
             && parsed.IsDone == IsDone
             && parsed.Text == Text
             && parsed.Indent == Indent
-            && parsed.Bullet == Bullet)
+            && parsed.Bullet == Bullet
+            && TaskAttachment.SameSequence(parsed.Attachments, Attachments))
         {
             return RawLine;
         }
 
         var mark = !IsDone ? " " : DoneMark == 'X' ? "X" : "x";
-        return $"{Indent}{Bullet} [{mark}] {Text}";
+        return $"{Indent}{Bullet} [{mark}] {TaskAttachmentSyntax.Compose(Text, Attachments)}";
     }
 
     public static bool SameList(IReadOnlyList<DayTask> left, IReadOnlyList<DayTask> right)
@@ -143,7 +149,8 @@ public sealed class DayTask
                 || !string.Equals(
                     DayTaskCategory.Normalize(left[i].Category),
                     DayTaskCategory.Normalize(right[i].Category),
-                    StringComparison.Ordinal))
+                    StringComparison.Ordinal)
+                || !TaskAttachment.SameSequence(left[i].Attachments, right[i].Attachments))
             {
                 return false;
             }

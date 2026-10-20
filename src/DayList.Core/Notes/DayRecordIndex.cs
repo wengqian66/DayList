@@ -24,7 +24,7 @@ public static class DayRecordIndex
                 continue;
             }
 
-            if (snapshot.Tasks.Any(task => !string.IsNullOrWhiteSpace(task.Text))
+            if (snapshot.Tasks.Any(task => !string.IsNullOrWhiteSpace(task.Text) || task.Attachments.Count > 0)
                 || snapshot.Inspirations.Any(entry => !string.IsNullOrWhiteSpace(entry.Text)))
             {
                 marked.Add(day);
