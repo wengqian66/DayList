@@ -1,6 +1,17 @@
 namespace DayList.Core;
 
 /// <summary>
+/// Files copied for one task. <see cref="Error"/> is the last failure;
+/// earlier successes stay in <see cref="Added"/>.
+/// </summary>
+public sealed class AttachmentImportBatch
+{
+    public List<TaskAttachment> Added { get; } = new();
+
+    public string? Error { get; set; }
+}
+
+/// <summary>
 /// Task files are copied into the Obsidian vault at
 /// <c>DayList-attachments/yyyy-MM-dd/</c> (vault root, not beside the daily note).
 /// The folder name is owned by DayList so it does not sit inside a user's note folder,
@@ -69,6 +80,59 @@ public static class AttachmentVault
             OriginalToken = attachment.ToCanonicalToken()
         };
     }
+
+    /// <summary>
+    /// Copies several files with the same rules as <see cref="Import"/>.
+    /// A folder, a duplicate, or a rejected file does not stop the rest.
+    /// </summary>
+    public static AttachmentImportBatch ImportMany(
+        string vaultPath,
+        DateOnly date,
+        IEnumerable<string> sourcePaths,
+        IEnumerable<string>? alreadyAttached = null)
+    {
+        var batch = new AttachmentImportBatch();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (alreadyAttached is not null)
+        {
+            foreach (var path in alreadyAttached)
+            {
+                var key = NormalizeRelative(path);
+                if (key.Length > 0)
+                    seen.Add(key);
+            }
+        }
+
+        foreach (var path in sourcePaths)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(path) && Directory.Exists(path))
+                {
+                    batch.Error = "只能附加文件。";
+                    continue;
+                }
+
+                var imported = Import(vaultPath, date, path);
+                if (!seen.Add(NormalizeRelative(imported.RelativePath)))
+                {
+                    batch.Error = "这个文件已经附在这条任务上。";
+                    continue;
+                }
+
+                batch.Added.Add(imported);
+            }
+            catch (Exception ex)
+            {
+                batch.Error = string.IsNullOrWhiteSpace(ex.Message) ? "没有添加这个附件。" : ex.Message;
+            }
+        }
+
+        return batch;
+    }
+
+    private static string NormalizeRelative(string? path) =>
+        (path ?? "").Replace('\\', '/').Trim('/');
 
     /// <summary>
     /// Deletes a managed vault file when no Markdown note still points at it.
