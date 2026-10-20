@@ -150,7 +150,7 @@
                     Padding="16,14,14,8"
                     ToolTipService.ToolTip="拖到卡片上可改分类">
                     <StackPanel Spacing="2">
-                        <Grid Margin="0,0,0,8" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="10">
+                        <Grid Margin="0,0,0,8" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
                             <Ellipse
                                 Width="8"
                                 Height="8"
@@ -164,25 +164,14 @@
                                 Foreground="{StaticResource SoftInkBrush}"
                                 Text="{x:Bind Title, Mode=OneTime}"
                                 TextTrimming="CharacterEllipsis" />
-                            <Button
-                                Grid.Column="2"
-                                VerticalAlignment="Center"
-                                AutomationProperties.Name="删除分类"
-                                Click="DeleteCategory_Click"
-                                Opacity="0.72"
-                                Style="{StaticResource QuietButtonStyle}"
-                                ToolTipService.ToolTip="删除分类"
-                                Visibility="{x:Bind DeleteVisibility, Mode=OneTime}">
-                                <FontIcon FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE74D;" />
-                            </Button>
                             <TextBlock
-                                Grid.Column="3"
+                                Grid.Column="2"
                                 VerticalAlignment="Center"
                                 FontSize="13"
                                 Foreground="{StaticResource SoftMutedInkBrush}"
                                 Text="{x:Bind FractionText, Mode=OneWay}" />
                             <Grid
-                                Grid.Column="4"
+                                Grid.Column="3"
                                 Width="36"
                                 Height="36"
                                 VerticalAlignment="Center"
@@ -232,7 +221,7 @@
                     Padding="16,12,14,8"
                     ToolTipService.ToolTip="拖到卡片上可改分类">
                     <StackPanel Spacing="2">
-                        <Grid Margin="0,0,0,6" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                        <Grid Margin="0,0,0,6" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                             <Ellipse
                                 Width="8"
                                 Height="8"
@@ -246,19 +235,8 @@
                                 Foreground="{StaticResource SoftInkBrush}"
                                 Text="{x:Bind Title, Mode=OneTime}"
                                 TextTrimming="CharacterEllipsis" />
-                            <Button
-                                Grid.Column="2"
-                                VerticalAlignment="Center"
-                                AutomationProperties.Name="删除分类"
-                                Click="DeleteCategory_Click"
-                                Opacity="0.72"
-                                Style="{StaticResource QuietButtonStyle}"
-                                ToolTipService.ToolTip="删除分类"
-                                Visibility="{x:Bind DeleteVisibility, Mode=OneTime}">
-                                <FontIcon FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE74D;" />
-                            </Button>
                             <TextBlock
-                                Grid.Column="3"
+                                Grid.Column="2"
                                 VerticalAlignment="Center"
                                 FontSize="12"
                                 Foreground="{StaticResource SoftMutedInkBrush}"
@@ -276,6 +254,48 @@
                     </StackPanel>
                 </Border>
             </local:SoftCard>
+        </DataTemplate>
+
+        <!-- Open list only. The closed combo hides the trash so the narrow
+             selection box stays a label. -->
+        <DataTemplate x:Key="CategoryPickerItemTemplate" x:DataType="local:CategoryPickerItem">
+            <Grid
+                VerticalAlignment="Center"
+                ColumnSpacing="0"
+                Loaded="CategoryPickerItem_Loaded">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="14"
+                    Text="{x:Bind Label}"
+                    TextTrimming="CharacterEllipsis" />
+                <Button
+                    x:Name="PickerDeleteButton"
+                    Grid.Column="1"
+                    Width="28"
+                    Height="28"
+                    MinWidth="0"
+                    MinHeight="0"
+                    Margin="4,0,0,0"
+                    Padding="0"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="删除分类 / Delete category"
+                    IsTabStop="False"
+                    PointerCanceled="CategoryPickerDelete_PointerCanceled"
+                    PointerPressed="CategoryPickerDelete_PointerPressed"
+                    PointerReleased="CategoryPickerDelete_PointerReleased"
+                    Style="{StaticResource QuietButtonStyle}"
+                    ToolTipService.ToolTip="删除分类 / Delete category"
+                    Visibility="{x:Bind DeleteVisibility}">
+                    <FontIcon
+                        FontSize="12"
+                        Foreground="{StaticResource SoftMutedInkBrush}"
+                        Glyph="&#xE74D;" />
+                </Button>
+            </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="OverdueItemTemplate" x:DataType="local:OverdueRow">
@@ -1182,13 +1202,14 @@
                         Style="{StaticResource SoftComboBoxStyle}"
                         Grid.Column="2"
                         MinWidth="100"
-                        MaxWidth="140"
+                        MaxWidth="160"
                         Height="36"
                         VerticalAlignment="Center"
                         CornerRadius="14"
                         DropDownClosed="CategoryPicker_DropDownClosed"
+                        ItemTemplate="{StaticResource CategoryPickerItemTemplate}"
                         SelectionChanged="CategoryPicker_SelectionChanged"
-                        ToolTipService.ToolTip="新任务的分类。新建过的会一直留在这里。" />
+                        ToolTipService.ToolTip="新任务的分类。名称旁的垃圾桶可删除分类。 / Category for a new task. The trash icon beside a name deletes it." />
                 </Grid>
             </Border>
 

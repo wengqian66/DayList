@@ -45,6 +45,9 @@ public sealed partial class MainPage : Page
     private bool _closed;
     private bool _rebuildingPicker;
     private bool _categoryPromptOpen;
+    private bool _pickerDeleteInProgress;
+    private bool _pickerDeleteCommit;
+    private string? _pickerDeleteRestore;
     private string _composeCategory = DayTaskCategory.UncategorizedKey;
     private TaskRow? _dragRow;
     private TaskRow? _dropRow;
@@ -187,6 +190,9 @@ public sealed partial class MainPage : Page
         ShowMode();
         RefreshCategoryPicker();
         SoftUi.StyleComboBox(CategoryPicker);
+        if (Application.Current.Resources.TryGetValue("CategoryPickerItemStyle", out var pickerItemStyle)
+            && pickerItemStyle is Style categoryPickerItemStyle)
+            CategoryPicker.ItemContainerStyle = categoryPickerItemStyle;
         AddBox.Paste += async (_, e) =>
         {
             e.Handled = true;
@@ -348,7 +354,7 @@ public sealed partial class MainPage : Page
 
             foreach (var group in GroupRows(source))
             {
-                var card = new CategoryCardModel(group.Key, CatalogContains(group.Key));
+                var card = new CategoryCardModel(group.Key);
                 foreach (var row in group.Items)
                     card.Tasks.Add(row);
                 card.RefreshStats();
@@ -566,22 +572,15 @@ public sealed partial class MainPage : Page
         _rebuildingPicker = true;
         try
         {
-            var names = KnownCategories()
-                .OrderBy(name => name, StringComparer.CurrentCulture)
-                .ToList();
-
             CategoryPicker.Items.Clear();
-            CategoryPicker.Items.Add(DayTaskCategory.UncategorizedLabel);
-            foreach (var name in names)
-                CategoryPicker.Items.Add(name);
-            CategoryPicker.Items.Add(DayTaskCategory.NewCategorySentinel);
+            foreach (var entry in CategoryCatalog.PickerEntries(
+                         _settings.TaskCategories,
+                         _rows.Select(row => row.Category).Append(_composeCategory)))
+            {
+                CategoryPicker.Items.Add(new CategoryPickerItem(entry.Label, entry.CanDelete));
+            }
 
-            var wanted = DayTaskCategory.IsUncategorized(_composeCategory)
-                ? DayTaskCategory.UncategorizedLabel
-                : _composeCategory;
-            var match = CategoryPicker.Items.Cast<object>().FirstOrDefault(item =>
-                string.Equals(item?.ToString(), wanted, StringComparison.Ordinal));
-            CategoryPicker.SelectedItem = match ?? CategoryPicker.Items[0];
+            SelectComposeCategoryInPicker();
         }
         finally
         {
@@ -589,12 +588,40 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void SelectComposeCategoryInPicker()
+    {
+        if (CategoryPicker is null || CategoryPicker.Items.Count == 0)
+            return;
+
+        var wanted = DayTaskCategory.IsUncategorized(_composeCategory)
+            ? DayTaskCategory.UncategorizedLabel
+            : _composeCategory;
+        var match = CategoryPicker.Items.Cast<object>().FirstOrDefault(item =>
+            string.Equals(PickerLabel(item), wanted, StringComparison.Ordinal));
+
+        var rebuilding = _rebuildingPicker;
+        _rebuildingPicker = true;
+        try
+        {
+            CategoryPicker.SelectedItem = match ?? CategoryPicker.Items[0];
+        }
+        finally
+        {
+            _rebuildingPicker = rebuilding;
+        }
+    }
+
+    private static string PickerLabel(object? item) =>
+        item is CategoryPickerItem option
+            ? option.Label
+            : item?.ToString() ?? DayTaskCategory.UncategorizedLabel;
+
     private async void CategoryPicker_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_rebuildingPicker || CategoryPicker.SelectedItem is null)
             return;
 
-        var selected = CategoryPicker.SelectedItem.ToString() ?? DayTaskCategory.UncategorizedLabel;
+        var selected = PickerLabel(CategoryPicker.SelectedItem);
         if (selected == DayTaskCategory.NewCategorySentinel)
         {
             _categoryPromptOpen = true;
@@ -602,13 +629,7 @@ public sealed partial class MainPage : Page
             {
                 var created = await PromptNewCategoryAsync();
                 if (created is null)
-                {
-                    _rebuildingPicker = true;
-                    CategoryPicker.SelectedItem = DayTaskCategory.IsUncategorized(_composeCategory)
-                        ? DayTaskCategory.UncategorizedLabel
-                        : _composeCategory;
-                    _rebuildingPicker = false;
-                }
+                    SelectComposeCategoryInPicker();
                 else
                 {
                     _composeCategory = created;
@@ -630,9 +651,112 @@ public sealed partial class MainPage : Page
 
     private void CategoryPicker_DropDownClosed(object sender, object e)
     {
-        if (_categoryPromptOpen)
+        if (_categoryPromptOpen || _pickerDeleteCommit)
             return;
+
+        if (_pickerDeleteInProgress)
+            AbandonPickerDelete();
+
         FocusAddBoxAfterCategory();
+    }
+
+    private void CategoryPickerItem_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element)
+            return;
+
+        void HideTrashOutsideDropDown()
+        {
+            if (element.FindName("PickerDeleteButton") is not Button button)
+                return;
+            if (HasAncestor<ComboBoxItem>(element))
+                return;
+
+            // The closed combo reuses this template. A trash icon there is easy
+            // to hit by accident and crowds the narrow selection box.
+            button.Visibility = Visibility.Collapsed;
+            button.IsHitTestVisible = false;
+        }
+
+        HideTrashOutsideDropDown();
+        element.DispatcherQueue.TryEnqueue(HideTrashOutsideDropDown);
+    }
+
+    private void CategoryPickerDelete_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        // Snapshot the category before this row can become the selection.
+        // Leave the press unhandled so the button keeps pointer capture.
+        _pickerDeleteRestore ??= _composeCategory;
+        _pickerDeleteInProgress = true;
+    }
+
+    private async void CategoryPickerDelete_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element)
+            return;
+
+        // Handled before the button raises Click and before the combo row
+        // selects. Otherwise the popup closes and the delete never runs.
+        e.Handled = true;
+
+        var point = e.GetCurrentPoint(element).Position;
+        var inside = point.X >= 0 && point.Y >= 0
+            && point.X <= element.ActualWidth
+            && point.Y <= element.ActualHeight;
+        if (!inside || element.DataContext is not CategoryPickerItem item || !item.CanDelete || _pickerDeleteCommit)
+        {
+            if (!_pickerDeleteCommit)
+                AbandonPickerDelete();
+            return;
+        }
+
+        _pickerDeleteCommit = true;
+        if (_pickerDeleteRestore is not null)
+            _composeCategory = _pickerDeleteRestore;
+
+        try
+        {
+            if (CategoryPicker is not null)
+                CategoryPicker.IsDropDownOpen = false;
+            SelectComposeCategoryInPicker();
+            await ConfirmDeleteCategoryAsync(item.Label);
+        }
+        finally
+        {
+            _pickerDeleteCommit = false;
+            _pickerDeleteInProgress = false;
+            _pickerDeleteRestore = null;
+        }
+
+        FocusAddBoxAfterCategory();
+    }
+
+    private void CategoryPickerDelete_PointerCanceled(object sender, PointerRoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (_pickerDeleteCommit)
+            return;
+        AbandonPickerDelete();
+    }
+
+    private void AbandonPickerDelete()
+    {
+        if (_pickerDeleteRestore is not null)
+            _composeCategory = _pickerDeleteRestore;
+        _pickerDeleteInProgress = false;
+        _pickerDeleteRestore = null;
+        SelectComposeCategoryInPicker();
+    }
+
+    private static bool HasAncestor<T>(DependencyObject? start) where T : DependencyObject
+    {
+        for (var current = start; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is T)
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -719,15 +843,6 @@ public sealed partial class MainPage : Page
         };
         flyout.Items.Add(create);
 
-        var current = DayTaskCategory.Normalize(row.Category);
-        if (CatalogContains(current))
-        {
-            flyout.Items.Add(new MenuFlyoutSeparator());
-            var remove = new MenuFlyoutItem { Text = "删除分类" };
-            remove.Click += async (_, _) => await ConfirmDeleteCategoryAsync(current);
-            flyout.Items.Add(remove);
-        }
-
         flyout.ShowAt(element, new FlyoutShowOptions { Placement = FlyoutPlacementMode.Bottom });
     }
 
@@ -735,13 +850,6 @@ public sealed partial class MainPage : Page
         CategoryCatalog.Available(
             _settings.TaskCategories,
             _rows.Select(row => row.Category).Append(_composeCategory));
-
-    private bool CatalogContains(string? category)
-    {
-        var name = DayTaskCategory.Normalize(category);
-        return !DayTaskCategory.IsUncategorized(name)
-            && _settings.TaskCategories.Contains(name, StringComparer.Ordinal);
-    }
 
     private void RememberCategory(string? name) =>
         RememberCategories(new[] { name });
@@ -769,13 +877,6 @@ public sealed partial class MainPage : Page
         }
     }
 
-    private async void DeleteCategory_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not FrameworkElement { DataContext: CategoryCardModel card })
-            return;
-        await ConfirmDeleteCategoryAsync(card.Category);
-    }
-
     private async Task ConfirmDeleteCategoryAsync(string? category)
     {
         var name = DayTaskCategory.Normalize(category);
@@ -784,14 +885,14 @@ public sealed partial class MainPage : Page
 
         var count = _rows.Count(row => DayTaskCategory.Normalize(row.Category) == name);
         var body = count == 0
-            ? $"从列表移除「{name}」。已写在笔记里的任务不会改动。"
-            : $"「{name}」今天还有 {count} 条任务，会留在笔记里。只从列表移除。";
+            ? $"从列表移除「{name}」。已写在笔记里的任务不会改动。\nRemoves “{name}” from the list. Tasks already written in notes stay as they are."
+            : $"「{name}」今天还有 {count} 条任务，会留在笔记里。只从列表移除。\n“{name}” still has {count} task(s) today. They stay in the note. Only the list entry is removed.";
         var dialog = SoftUi.CreateDialog(
             XamlRoot,
-            "删除分类",
+            "删除分类 / Delete category",
             SoftUi.CreateDialogBody(body),
-            "删除",
-            "取消",
+            "删除 / Delete",
+            "取消 / Cancel",
             ContentDialogButton.Close);
         if (await dialog.ShowAsync() != ContentDialogResult.Primary)
             return;
@@ -800,7 +901,7 @@ public sealed partial class MainPage : Page
         ApplyCatalogUpdate(update);
         if (!update.Changed)
         {
-            ShowStatus($"「{name}」已经不在分类列表里。", InfoBarSeverity.Informational);
+            ShowStatus($"「{name}」已经不在分类列表里。 / “{name}” is already off the list.", InfoBarSeverity.Informational);
             return;
         }
 
@@ -810,7 +911,9 @@ public sealed partial class MainPage : Page
         RebuildList();
         RefreshCategoryPicker();
         ShowStatus(
-            count == 0 ? $"已删除分类「{name}」。" : $"已从列表移除「{name}」。今天的任务还在。",
+            count == 0
+                ? $"已删除分类「{name}」。 / Deleted “{name}”."
+                : $"已从列表移除「{name}」。今天的任务还在。 / Removed “{name}” from the list. Today's tasks stay.",
             InfoBarSeverity.Success);
     }
 
