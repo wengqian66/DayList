@@ -9,6 +9,12 @@ public readonly record struct CategoryCatalogUpdate(
     bool Changed);
 
 /// <summary>
+/// One row in the add-task category picker. <see cref="CanDelete"/> is true
+/// only for a catalog name, never for 未分类 or 「＋ 新建分类…」.
+/// </summary>
+public readonly record struct CategoryPickerEntry(string Label, bool CanDelete);
+
+/// <summary>
 /// Task categories kept in app settings, not in a single day's note.
 /// Creating a name once makes it available on later days. Deleting removes it
 /// from the catalog and retires it so opening an older note does not put it back.
@@ -118,6 +124,31 @@ public static class CategoryCatalog
         }
 
         return new CategoryCatalogUpdate(active, gone, changed);
+    }
+
+    /// <summary>
+    /// Rows for the add-task category picker. Delete is offered only for names
+    /// still in the catalog. The uncategorized row, the new-category row, and
+    /// headings that merely appear on today's note are not deletable here.
+    /// </summary>
+    public static IReadOnlyList<CategoryPickerEntry> PickerEntries(
+        IEnumerable<string?>? categories,
+        IEnumerable<string?>? alsoUsed)
+    {
+        var catalog = new HashSet<string>(Normalize(categories), StringComparer.Ordinal);
+        var entries = new List<CategoryPickerEntry>
+        {
+            new(DayTaskCategory.UncategorizedLabel, false)
+        };
+
+        foreach (var name in Available(categories, alsoUsed)
+                     .OrderBy(name => name, StringComparer.CurrentCulture))
+        {
+            entries.Add(new CategoryPickerEntry(name, catalog.Contains(name)));
+        }
+
+        entries.Add(new CategoryPickerEntry(DayTaskCategory.NewCategorySentinel, false));
+        return entries;
     }
 
     /// <summary>

@@ -210,4 +210,25 @@ public class CategoryCatalogTests
                 File.Delete(path);
         }
     }
+
+    [Fact]
+    public void PickerEntries_OfferDeleteOnlyForCatalogNames()
+    {
+        var entries = CategoryCatalog.PickerEntries(
+            new[] { "生活", "工作", "未分类", "  " },
+            new[] { "工作", "旧类", "" });
+
+        Assert.Equal(DayTaskCategory.UncategorizedLabel, entries[0].Label);
+        Assert.False(entries[0].CanDelete);
+        Assert.Equal(DayTaskCategory.NewCategorySentinel, entries[^1].Label);
+        Assert.False(entries[^1].CanDelete);
+
+        var byLabel = entries.ToDictionary(entry => entry.Label);
+        Assert.True(byLabel["工作"].CanDelete);
+        Assert.True(byLabel["生活"].CanDelete);
+        Assert.False(byLabel["旧类"].CanDelete);
+        Assert.DoesNotContain(entries, entry => entry.Label.Length == 0);
+        Assert.Equal(5, entries.Count);
+        Assert.Equal(entries.Count, entries.Select(entry => entry.Label).Distinct().Count());
+    }
 }

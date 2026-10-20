@@ -337,6 +337,12 @@
                 <Setter Property="RequestedTheme" Value="Light" />
             </Style>
 
+            <!-- Trash sits beside the name. Less vertical padding keeps the row near the old text height. -->
+            <Style x:Key="CategoryPickerItemStyle" TargetType="ComboBoxItem" BasedOn="{StaticResource SoftComboBoxItemStyle}">
+                <Setter Property="Padding" Value="10,2,8,2" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+            </Style>
+
             <Style x:Key="SoftComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
                 <Setter Property="Background" Value="{StaticResource SoftCreamBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />

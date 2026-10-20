@@ -274,15 +274,36 @@ public static class CategoryAccent
     }
 }
 
+/// <summary>
+/// One row in the bottom category picker. The closed combo shows <see cref="Label"/>;
+/// the open list adds a trash control when <see cref="CanDelete"/> is set.
+/// </summary>
+public sealed class CategoryPickerItem
+{
+    public CategoryPickerItem(string label, bool canDelete)
+    {
+        Label = label ?? "";
+        CanDelete = canDelete;
+    }
+
+    public string Label { get; }
+
+    public bool CanDelete { get; }
+
+    public Visibility DeleteVisibility =>
+        CanDelete ? Visibility.Visible : Visibility.Collapsed;
+
+    public override string ToString() => Label;
+}
+
 public sealed class CategoryCardModel : INotifyPropertyChanged
 {
     private int _doneCount;
     private int _totalCount;
 
-    public CategoryCardModel(string category, bool canDelete = true)
+    public CategoryCardModel(string category)
     {
         Category = DayTaskCategory.Normalize(category);
-        CanDelete = canDelete && !DayTaskCategory.IsUncategorized(Category);
         var accent = CategoryAccent.For(Category);
         AccentBrush = new SolidColorBrush(accent);
         SoftAccentBrush = CategoryAccent.SoftBrush(Category);
@@ -294,8 +315,6 @@ public sealed class CategoryCardModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string Category { get; }
-
-    public bool CanDelete { get; }
 
     public string Title => DayTaskCategory.Display(Category);
 
@@ -369,9 +388,6 @@ public sealed class CategoryCardModel : INotifyPropertyChanged
     }
 
     public string FractionText => TotalCount == 0 ? "" : $"{DoneCount} / {TotalCount}";
-
-    public Visibility DeleteVisibility =>
-        CanDelete ? Visibility.Visible : Visibility.Collapsed;
 
     public Visibility ProgressVisibility =>
         TotalCount == 0 ? Visibility.Collapsed : Visibility.Visible;
