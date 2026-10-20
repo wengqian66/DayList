@@ -44,8 +44,8 @@ public sealed partial class MainPage : Page
     private bool _ready;
     private bool _closed;
     private bool _rebuildingPicker;
+    private bool _categoryPromptOpen;
     private string _composeCategory = DayTaskCategory.UncategorizedKey;
-    private readonly HashSet<string> _extraCategories = new(StringComparer.Ordinal);
     private TaskRow? _dragRow;
     private TaskRow? _dropRow;
     private CategoryCardModel? _dropCard;
@@ -296,6 +296,7 @@ public sealed partial class MainPage : Page
         PathText.Text = FormatNoteSubtitle(snapshot.RelativePath, snapshot.FileExists);
         ToolTipService.SetToolTip(PathText, snapshot.FullPath);
         RefreshSectionTitleChrome();
+        AbsorbNoteCategories(snapshot.Tasks.Select(task => task.Category));
         RebuildList();
         UpdateStats();
         RefreshCategoryPicker();
@@ -347,11 +348,21 @@ public sealed partial class MainPage : Page
 
             foreach (var group in GroupRows(source))
             {
-                var card = new CategoryCardModel(group.Key);
+                var card = new CategoryCardModel(group.Key, CatalogContains(group.Key));
                 foreach (var row in group.Items)
                     card.Tasks.Add(row);
                 card.RefreshStats();
                 _cards.Add(card);
+            }
+
+            if (_nav == MainNav.Today)
+            {
+                foreach (var name in CategoryCatalog.WithoutTasks(_settings.TaskCategories, _rows.Select(row => row.Category)))
+                {
+                    var card = new CategoryCardModel(name);
+                    card.RefreshStats();
+                    _cards.Add(card);
+                }
             }
         }
         finally
@@ -555,13 +566,7 @@ public sealed partial class MainPage : Page
         _rebuildingPicker = true;
         try
         {
-            var names = _rows
-                .Select(row => DayTaskCategory.Normalize(row.Category))
-                .Concat(_extraCategories)
-                .Append(_composeCategory)
-                .Select(DayTaskCategory.Normalize)
-                .Where(name => !DayTaskCategory.IsUncategorized(name))
-                .Distinct(StringComparer.Ordinal)
+            var names = KnownCategories()
                 .OrderBy(name => name, StringComparer.CurrentCulture)
                 .ToList();
 
@@ -592,24 +597,65 @@ public sealed partial class MainPage : Page
         var selected = CategoryPicker.SelectedItem.ToString() ?? DayTaskCategory.UncategorizedLabel;
         if (selected == DayTaskCategory.NewCategorySentinel)
         {
-            var created = await PromptNewCategoryAsync();
-            if (created is null)
+            _categoryPromptOpen = true;
+            try
             {
-                _rebuildingPicker = true;
-                CategoryPicker.SelectedItem = DayTaskCategory.IsUncategorized(_composeCategory)
-                    ? DayTaskCategory.UncategorizedLabel
-                    : _composeCategory;
-                _rebuildingPicker = false;
-                return;
+                var created = await PromptNewCategoryAsync();
+                if (created is null)
+                {
+                    _rebuildingPicker = true;
+                    CategoryPicker.SelectedItem = DayTaskCategory.IsUncategorized(_composeCategory)
+                        ? DayTaskCategory.UncategorizedLabel
+                        : _composeCategory;
+                    _rebuildingPicker = false;
+                }
+                else
+                {
+                    _composeCategory = created;
+                    RememberCategory(created);
+                    RefreshCategoryPicker();
+                }
+            }
+            finally
+            {
+                _categoryPromptOpen = false;
             }
 
-            _composeCategory = created;
-            _extraCategories.Add(created);
-            RefreshCategoryPicker();
+            FocusAddBoxAfterCategory();
             return;
         }
 
         _composeCategory = DayTaskCategory.Normalize(selected);
+    }
+
+    private void CategoryPicker_DropDownClosed(object sender, object e)
+    {
+        if (_categoryPromptOpen)
+            return;
+        FocusAddBoxAfterCategory();
+    }
+
+    /// <summary>
+    /// Category selection is finished. Focus returns after the current key
+    /// so the Enter that closed the list does not also add a task.
+    /// </summary>
+    private void FocusAddBoxAfterCategory()
+    {
+        void Later()
+        {
+            if (_closed || _categoryPromptOpen || AddBox is null)
+                return;
+            AddBox.Focus(FocusState.Programmatic);
+            var len = AddBox.Text?.Length ?? 0;
+            AddBox.SelectionStart = len;
+            AddBox.SelectionLength = 0;
+        }
+
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
+        {
+            Later();
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, Later);
+        });
     }
 
     private async Task<string?> PromptNewCategoryAsync(string? title = null)
@@ -666,22 +712,107 @@ public sealed partial class MainPage : Page
             if (created is null)
                 return;
             row.Category = created;
-            _extraCategories.Add(created);
+            RememberCategory(created);
             RebuildList();
             RefreshCategoryPicker();
             Persist();
         };
         flyout.Items.Add(create);
+
+        var current = DayTaskCategory.Normalize(row.Category);
+        if (CatalogContains(current))
+        {
+            flyout.Items.Add(new MenuFlyoutSeparator());
+            var remove = new MenuFlyoutItem { Text = "删除分类" };
+            remove.Click += async (_, _) => await ConfirmDeleteCategoryAsync(current);
+            flyout.Items.Add(remove);
+        }
+
         flyout.ShowAt(element, new FlyoutShowOptions { Placement = FlyoutPlacementMode.Bottom });
     }
 
     private IEnumerable<string> KnownCategories() =>
-        _rows
-            .Select(row => DayTaskCategory.Normalize(row.Category))
-            .Concat(_extraCategories)
-            .Where(name => !DayTaskCategory.IsUncategorized(name))
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(name => name, StringComparer.CurrentCulture);
+        CategoryCatalog.Available(
+            _settings.TaskCategories,
+            _rows.Select(row => row.Category).Append(_composeCategory));
+
+    private bool CatalogContains(string? category)
+    {
+        var name = DayTaskCategory.Normalize(category);
+        return !DayTaskCategory.IsUncategorized(name)
+            && _settings.TaskCategories.Contains(name, StringComparer.Ordinal);
+    }
+
+    private void RememberCategory(string? name) =>
+        RememberCategories(new[] { name });
+
+    private void RememberCategories(IEnumerable<string?> names) =>
+        ApplyCatalogUpdate(CategoryCatalog.RememberAll(_settings.TaskCategories, _settings.RetiredTaskCategories, names));
+
+    private void AbsorbNoteCategories(IEnumerable<string?> names) =>
+        ApplyCatalogUpdate(CategoryCatalog.Absorb(_settings.TaskCategories, _settings.RetiredTaskCategories, names));
+
+    private void ApplyCatalogUpdate(CategoryCatalogUpdate update)
+    {
+        if (!update.Changed)
+            return;
+
+        _settings.TaskCategories = update.Categories.ToList();
+        _settings.RetiredTaskCategories = update.Retired.ToList();
+        try
+        {
+            SettingsStore.Save(_settings);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("没能保存分类：" + ex.Message, InfoBarSeverity.Warning);
+        }
+    }
+
+    private async void DeleteCategory_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: CategoryCardModel card })
+            return;
+        await ConfirmDeleteCategoryAsync(card.Category);
+    }
+
+    private async Task ConfirmDeleteCategoryAsync(string? category)
+    {
+        var name = DayTaskCategory.Normalize(category);
+        if (DayTaskCategory.IsUncategorized(name))
+            return;
+
+        var count = _rows.Count(row => DayTaskCategory.Normalize(row.Category) == name);
+        var body = count == 0
+            ? $"从列表移除「{name}」。已写在笔记里的任务不会改动。"
+            : $"「{name}」今天还有 {count} 条任务，会留在笔记里。只从列表移除。";
+        var dialog = SoftUi.CreateDialog(
+            XamlRoot,
+            "删除分类",
+            SoftUi.CreateDialogBody(body),
+            "删除",
+            "取消",
+            ContentDialogButton.Close);
+        if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            return;
+
+        var update = CategoryCatalog.Forget(_settings.TaskCategories, _settings.RetiredTaskCategories, name);
+        ApplyCatalogUpdate(update);
+        if (!update.Changed)
+        {
+            ShowStatus($"「{name}」已经不在分类列表里。", InfoBarSeverity.Informational);
+            return;
+        }
+
+        if (DayTaskCategory.Normalize(_composeCategory) == name)
+            _composeCategory = DayTaskCategory.UncategorizedKey;
+
+        RebuildList();
+        RefreshCategoryPicker();
+        ShowStatus(
+            count == 0 ? $"已删除分类「{name}」。" : $"已从列表移除「{name}」。今天的任务还在。",
+            InfoBarSeverity.Success);
+    }
 
     private void TaskRow_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
     {
@@ -743,7 +874,7 @@ public sealed partial class MainPage : Page
             var created = await PromptNewCategoryAsync();
             if (created is null)
                 return;
-            _extraCategories.Add(created);
+            RememberCategory(created);
             ApplyRowCategory(row, created);
         };
         change.Items.Add(create);
@@ -1295,6 +1426,8 @@ public sealed partial class MainPage : Page
         var category = parsed.Recognized && parsed.Category is not null
             ? parsed.Category
             : _composeCategory;
+        if (parsed.Recognized && !DayTaskCategory.IsUncategorized(parsed.Category))
+            RememberCategory(parsed.Category);
         var date = parsed.Recognized && parsed.Date is DateOnly day ? day : _date;
 
         if (date != _date)
@@ -2007,6 +2140,7 @@ public sealed partial class MainPage : Page
                 Persist();
 
             var added = PlanDraftApply.Apply(_settings, result.Tasks);
+            RememberCategories(result.Tasks.Select(task => task.Category));
             NoteSyncSuccess();
 
             if (result.Tasks.Any(t => t.Date == _date))
@@ -2166,6 +2300,8 @@ public sealed partial class MainPage : Page
             saved.WindowHeight = _settings.WindowHeight;
             saved.FocusMinutes = _focus.Duration.FocusMinutes;
             saved.BreakMinutes = _focus.Duration.BreakMinutes;
+            saved.TaskCategories = _settings.TaskCategories?.ToList() ?? new List<string>();
+            saved.RetiredTaskCategories = _settings.RetiredTaskCategories?.ToList() ?? new List<string>();
             _settings = saved;
             try
             {
@@ -2348,10 +2484,12 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        var tasks = template.CreateTasks();
+        RememberCategories(tasks.Select(task => task.Category));
         _suspendRowRebuild = true;
         try
         {
-            foreach (var task in template.CreateTasks())
+            foreach (var task in tasks)
                 InsertRow(TaskRow.From(task));
         }
         finally

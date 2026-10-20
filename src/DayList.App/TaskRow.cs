@@ -279,9 +279,10 @@ public sealed class CategoryCardModel : INotifyPropertyChanged
     private int _doneCount;
     private int _totalCount;
 
-    public CategoryCardModel(string category)
+    public CategoryCardModel(string category, bool canDelete = true)
     {
         Category = DayTaskCategory.Normalize(category);
+        CanDelete = canDelete && !DayTaskCategory.IsUncategorized(Category);
         var accent = CategoryAccent.For(Category);
         AccentBrush = new SolidColorBrush(accent);
         SoftAccentBrush = CategoryAccent.SoftBrush(Category);
@@ -293,6 +294,8 @@ public sealed class CategoryCardModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string Category { get; }
+
+    public bool CanDelete { get; }
 
     public string Title => DayTaskCategory.Display(Category);
 
@@ -343,6 +346,7 @@ public sealed class CategoryCardModel : INotifyPropertyChanged
             Notify(nameof(ProgressValue));
             Notify(nameof(ProgressPercent));
             Notify(nameof(ProgressLabel));
+            Notify(nameof(ProgressVisibility));
         }
     }
 
@@ -360,10 +364,17 @@ public sealed class CategoryCardModel : INotifyPropertyChanged
             Notify(nameof(ProgressPercent));
             Notify(nameof(ProgressLabel));
             Notify(nameof(CountText));
+            Notify(nameof(ProgressVisibility));
         }
     }
 
-    public string FractionText => TotalCount == 0 ? "0 / 0" : $"{DoneCount} / {TotalCount}";
+    public string FractionText => TotalCount == 0 ? "" : $"{DoneCount} / {TotalCount}";
+
+    public Visibility DeleteVisibility =>
+        CanDelete ? Visibility.Visible : Visibility.Collapsed;
+
+    public Visibility ProgressVisibility =>
+        TotalCount == 0 ? Visibility.Collapsed : Visibility.Visible;
 
     /// <summary>Item count for the completed list. Not a progress score.</summary>
     public string CountText => TotalCount == 0 ? "" : $"{TotalCount} 项";

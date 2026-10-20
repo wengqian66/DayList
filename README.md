@@ -11,18 +11,20 @@ Windows 上的每日待办。清单不另存数据库，只读写 Obsidian 库�
 - [x] 回邮件
 ```
 
+分类写在小节里的 `###` 标题下。新建一次会记在本机设置里，之后每一天都能直接选用。删除分类只从列表里拿掉，不改已经写进笔记的任务。
+
 小节以外的正文会原样保留。小节里不是任务的段落也会保留。在 Obsidian 里改同一份文件时，DayList 会重新读入；正在输入时不会抢走光标，信息条上可以载入外部版本，关掉提示则会在离开输入框时写回你的修改。
 
 ## 下载安装（推荐）
 
-从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.2.3。
+从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.2.4。
 
 - 自带 .NET 8 与 Windows App SDK，**无需再装 SDK 或运行时**
 - 默认装到 `Program Files\DayList`，可选桌面快捷方式
 - 首次打开后在设置里指定你的 **Obsidian 库文件夹**
 - 卸载后本机设置仍保留在 `%AppData%\DayList`（含 API Key，不会进安装包或仓库）
 
-当前版本：1.2.3。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
+当前版本：1.2.4。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
 
 ## 环境
 
@@ -105,10 +107,10 @@ API Key 以明文保存在本机的设置文件里，不会写进笔记。
 本机需安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) 与 [Inno Setup 6](https://jrsoftware.org/isinfo.php)。在仓库根目录：
 
 ```powershell
-  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.3
+  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.4
 ```
 
-完成后得到 `dist\DayList-Setup-1.2.3.exe`（自包含 win-x64）。
+完成后得到 `dist\DayList-Setup-1.2.4.exe`（自包含 win-x64）。
 
 ## 测试
 
