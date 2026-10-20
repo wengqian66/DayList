@@ -94,7 +94,9 @@ public sealed partial class SettingsWindow : Window
             WindowLeft = _seed.WindowLeft,
             WindowTop = _seed.WindowTop,
             WindowWidth = _seed.WindowWidth,
-            WindowHeight = _seed.WindowHeight
+            WindowHeight = _seed.WindowHeight,
+            TaskCategories = _seed.TaskCategories?.ToList() ?? new List<string>(),
+            RetiredTaskCategories = _seed.RetiredTaskCategories?.ToList() ?? new List<string>()
         };
         draft.Hotkey = HotkeySpec.Parse(draft.Hotkey).ToDisplay();
         draft.Normalize();

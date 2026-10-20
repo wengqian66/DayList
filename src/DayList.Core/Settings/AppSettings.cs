@@ -48,6 +48,17 @@ public sealed class AppSettings
 
     public double? WindowHeight { get; set; }
 
+    /// <summary>
+    /// Task categories kept across days, in the order they were first saved.
+    /// </summary>
+    public List<string> TaskCategories { get; set; } = new();
+
+    /// <summary>
+    /// Names the user removed from <see cref="TaskCategories"/>. Opening an older
+    /// note will not put them back. Creating the same name again clears this.
+    /// </summary>
+    public List<string> RetiredTaskCategories { get; set; } = new();
+
     [JsonIgnore]
     public bool HasVault =>
         !string.IsNullOrWhiteSpace(VaultPath) && Directory.Exists(VaultPath);
@@ -81,6 +92,11 @@ public sealed class AppSettings
             WindowWidth = null;
         if (WindowHeight is <= 0)
             WindowHeight = null;
+        TaskCategories = CategoryCatalog.Normalize(TaskCategories).ToList();
+        var active = new HashSet<string>(TaskCategories, StringComparer.Ordinal);
+        RetiredTaskCategories = CategoryCatalog.Normalize(RetiredTaskCategories)
+            .Where(name => !active.Contains(name))
+            .ToList();
     }
 
     private static string NormalizeHeading(string? heading, string fallback)
@@ -116,7 +132,9 @@ public sealed class AppSettings
             WindowLeft = WindowLeft,
             WindowTop = WindowTop,
             WindowWidth = WindowWidth,
-            WindowHeight = WindowHeight
+            WindowHeight = WindowHeight,
+            TaskCategories = TaskCategories?.ToList() ?? new List<string>(),
+            RetiredTaskCategories = RetiredTaskCategories?.ToList() ?? new List<string>()
         };
         copy.Normalize();
         return copy;

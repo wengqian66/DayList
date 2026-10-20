@@ -4,13 +4,13 @@
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1
-  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.3
+  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.4
 #>
 [CmdletBinding()]
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
-    [string]$Version = "1.2.3",
+    [string]$Version = "1.2.4",
     [switch]$SkipPublish,
     [switch]$SkipInstaller
 )

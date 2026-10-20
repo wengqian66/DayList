@@ -150,7 +150,7 @@
                     Padding="16,14,14,8"
                     ToolTipService.ToolTip="拖到卡片上可改分类">
                     <StackPanel Spacing="2">
-                        <Grid Margin="0,0,0,8" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                        <Grid Margin="0,0,0,8" ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="10">
                             <Ellipse
                                 Width="8"
                                 Height="8"
@@ -164,17 +164,29 @@
                                 Foreground="{StaticResource SoftInkBrush}"
                                 Text="{x:Bind Title, Mode=OneTime}"
                                 TextTrimming="CharacterEllipsis" />
-                            <TextBlock
+                            <Button
                                 Grid.Column="2"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="删除分类"
+                                Click="DeleteCategory_Click"
+                                Opacity="0.72"
+                                Style="{StaticResource QuietButtonStyle}"
+                                ToolTipService.ToolTip="删除分类"
+                                Visibility="{x:Bind DeleteVisibility, Mode=OneTime}">
+                                <FontIcon FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE74D;" />
+                            </Button>
+                            <TextBlock
+                                Grid.Column="3"
                                 VerticalAlignment="Center"
                                 FontSize="13"
                                 Foreground="{StaticResource SoftMutedInkBrush}"
                                 Text="{x:Bind FractionText, Mode=OneWay}" />
                             <Grid
-                                Grid.Column="3"
+                                Grid.Column="4"
                                 Width="36"
                                 Height="36"
-                                VerticalAlignment="Center">
+                                VerticalAlignment="Center"
+                                Visibility="{x:Bind ProgressVisibility, Mode=OneWay}">
                                 <ProgressRing
                                     Width="32"
                                     Height="32"
@@ -220,7 +232,7 @@
                     Padding="16,12,14,8"
                     ToolTipService.ToolTip="拖到卡片上可改分类">
                     <StackPanel Spacing="2">
-                        <Grid Margin="0,0,0,6" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                        <Grid Margin="0,0,0,6" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
                             <Ellipse
                                 Width="8"
                                 Height="8"
@@ -234,8 +246,19 @@
                                 Foreground="{StaticResource SoftInkBrush}"
                                 Text="{x:Bind Title, Mode=OneTime}"
                                 TextTrimming="CharacterEllipsis" />
-                            <TextBlock
+                            <Button
                                 Grid.Column="2"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="删除分类"
+                                Click="DeleteCategory_Click"
+                                Opacity="0.72"
+                                Style="{StaticResource QuietButtonStyle}"
+                                ToolTipService.ToolTip="删除分类"
+                                Visibility="{x:Bind DeleteVisibility, Mode=OneTime}">
+                                <FontIcon FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE74D;" />
+                            </Button>
+                            <TextBlock
+                                Grid.Column="3"
                                 VerticalAlignment="Center"
                                 FontSize="12"
                                 Foreground="{StaticResource SoftMutedInkBrush}"
@@ -1164,7 +1187,7 @@
                         VerticalAlignment="Center"
                         CornerRadius="14"
                         SelectionChanged="CategoryPicker_SelectionChanged"
-                        ToolTipService.ToolTip="新任务分类" />
+                        ToolTipService.ToolTip="新任务的分类。新建过的会一直留在这里。" />
                 </Grid>
             </Border>
 
