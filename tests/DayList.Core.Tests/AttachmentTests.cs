@@ -260,4 +260,73 @@ public class AttachmentTests
             }
         }
     }
+
+    [Fact]
+    public void ImportMany_CopiesPngAndDocxAndKeepsGoingAfterAReject()
+    {
+        using var vault = new TempVault();
+        var incoming = Path.Combine(vault.Root, "incoming");
+        Directory.CreateDirectory(incoming);
+        var png = Path.Combine(incoming, "shot.png");
+        var docx = Path.Combine(incoming, "notes.docx");
+        var exe = Path.Combine(incoming, "run.exe");
+        File.WriteAllBytes(png, new byte[] { 1, 2, 3 });
+        File.WriteAllText(docx, "hello");
+        File.WriteAllBytes(exe, new byte[] { 9 });
+
+        var batch = AttachmentVault.ImportMany(vault.Root, Day, new[] { png, exe, docx });
+
+        Assert.Equal(2, batch.Added.Count);
+        Assert.True(batch.Added[0].IsImage);
+        Assert.Equal("DayList-attachments/2026-10-20/shot.png", batch.Added[0].RelativePath);
+        Assert.Equal("![[DayList-attachments/2026-10-20/shot.png]]", batch.Added[0].OriginalToken);
+        Assert.False(batch.Added[1].IsImage);
+        Assert.Equal("DayList-attachments/2026-10-20/notes.docx", batch.Added[1].RelativePath);
+        Assert.Equal("[[DayList-attachments/2026-10-20/notes.docx]]", batch.Added[1].OriginalToken);
+        Assert.Equal("不支持这种附件（.exe）。", batch.Error);
+
+        var task = new DayTask { Text = "买牛奶", Attachments = batch.Added.ToList() };
+        var markdown = task.ToMarkdown();
+        Assert.Contains("![[DayList-attachments/2026-10-20/shot.png]]", markdown);
+        Assert.Contains("[[DayList-attachments/2026-10-20/notes.docx]]", markdown);
+        Assert.True(DayTask.TryParseLine(markdown, out var parsed));
+        Assert.Equal("买牛奶", parsed.Text);
+        Assert.Equal(2, parsed.Attachments.Count);
+        Assert.True(parsed.Attachments[0].IsImage);
+        Assert.False(parsed.Attachments[1].IsImage);
+    }
+
+    [Fact]
+    public void ImportMany_SkipsAFolderAndAFileAlreadyOnTheTask()
+    {
+        using var vault = new TempVault();
+        var incoming = Path.Combine(vault.Root, "incoming");
+        Directory.CreateDirectory(incoming);
+        var png = Path.Combine(incoming, "shot.png");
+        File.WriteAllBytes(png, new byte[] { 4, 5, 6 });
+
+        var folderOnly = AttachmentVault.ImportMany(vault.Root, Day, new[] { incoming });
+        Assert.Empty(folderOnly.Added);
+        Assert.Equal("只能附加文件。", folderOnly.Error);
+
+        var first = AttachmentVault.Import(vault.Root, Day, png);
+        var again = AttachmentVault.ImportMany(
+            vault.Root,
+            Day,
+            new[] { incoming, png },
+            new[] { first.RelativePath });
+
+        Assert.Empty(again.Added);
+        Assert.Equal("这个文件已经附在这条任务上。", again.Error);
+        Assert.True(File.Exists(Path.Combine(vault.Root, "DayList-attachments", "2026-10-20", "shot.png")));
+    }
+
+    [Fact]
+    public void ImportMany_ReportsAMissingVaultWithoutThrowing()
+    {
+        var missing = Path.Combine(Path.GetTempPath(), "daylist-missing-" + Guid.NewGuid().ToString("N"));
+        var batch = AttachmentVault.ImportMany(missing, Day, new[] { Path.Combine(missing, "a.png") });
+        Assert.Empty(batch.Added);
+        Assert.Equal("还没有选择 Obsidian 库。", batch.Error);
+    }
 }

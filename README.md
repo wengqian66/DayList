@@ -12,7 +12,7 @@ Windows 上的每日待办。清单不另存数据库，只读写 Obsidian 库�
 - [ ] 写周报 ![[DayList-attachments/2026-10-20/截图.png]] [[DayList-attachments/2026-10-20/周报.docx]]
 ```
 
-任务可以带附件。文件复制到库根目录的 `DayList-attachments/yyyy-MM-dd/`（不放在 AppData，也不跟每日笔记挤在同一个用户文件夹里）。图片用 `![[...]]`，其它文件用 `[[...]]`，Obsidian 能直接打开。DayList 重新读入时会把这些链接认回任务；笔记里其它内容、以及任务文字里不是这个目录的链接，都原样留下。单个文件超过 20MB 不会添加。删除任务或去掉附件时，只有扫过库里其它 Markdown、确认没有人再提到这个文件，才会删掉库里的副本；扫不到就留下文件。
+任务可以带附件。文件复制到库根目录的 `DayList-attachments/yyyy-MM-dd/`（不放在 AppData，也不跟每日笔记挤在同一个用户文件夹里）。图片用 `![[...]]`，其它文件用 `[[...]]`，Obsidian 能直接打开。DayList 重新读入时会把这些链接认回任务；笔记里其它内容、以及任务文字里不是这个目录的链接，都原样留下。单个文件超过 20MB 不会添加。把一个或多个文件拖到任务上，和点回形针走同一套规则。删除任务或去掉附件时，只有扫过库里其它 Markdown、确认没有人再提到这个文件，才会删掉库里的副本；扫不到就留下文件。
 
 分类写在小节里的 `###` 标题下。新建一次会记在本机设置里，之后每一天都能直接选用。当天没有任务的分类不显示在主列表，只出现在底部选择里。删除分类在底部的分类选择里：点名称旁的垃圾桶会先弹出确认，再只从列表里拿掉，不改已经写进笔记的任务。点名称本身仍然只是选中。 / Trash beside a name opens confirm, then removes it from the list; the name only selects. Empty categories stay in that picker and are hidden on the main list until a task uses them.
 
@@ -20,14 +20,14 @@ Windows 上的每日待办。清单不另存数据库，只读写 Obsidian 库�
 
 ## 下载安装（推荐）
 
-从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.2.8。
+从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.2.9。
 
 - 自带 .NET 8 与 Windows App SDK，**无需再装 SDK 或运行时**
 - 默认装到 `Program Files\DayList`，可选桌面快捷方式
 - 首次打开后在设置里指定你的 **Obsidian 库文件夹**
 - 卸载后本机设置仍保留在 `%AppData%\DayList`（含 API Key，不会进安装包或仓库）
 
-当前版本：1.2.8。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
+当前版本：1.2.9。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
 
 ## 环境
 
@@ -110,10 +110,10 @@ API Key 以明文保存在本机的设置文件里，不会写进笔记。
 本机需安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) 与 [Inno Setup 6](https://jrsoftware.org/isinfo.php)。在仓库根目录：
 
 ```powershell
-  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.8
+  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.9
 ```
 
-完成后得到 `dist\DayList-Setup-1.2.8.exe`（自包含 win-x64）。
+完成后得到 `dist\DayList-Setup-1.2.9.exe`（自包含 win-x64）。
 
 ## 测试
 

@@ -107,6 +107,7 @@
                 MinHeight="36"
                 RowDefinitions="Auto,Auto"
                 ContextRequested="TaskRow_ContextRequested"
+                DragLeave="TaskRow_DragLeave"
                 DragOver="TaskRow_DragOver"
                 Drop="TaskRow_Drop"
                 Holding="TaskRow_Holding"
@@ -1356,5 +1357,22 @@
             IsHitTestVisible="False"
             Visibility="Visible" />
         </Grid>
+        <!-- Zero-size target so a task editor can give up focus. Keyboard tab
+             is forwarded in code and does not stop on this control. -->
+        <Control
+            x:Name="EditorFocusSink"
+            Grid.ColumnSpan="2"
+            Width="0"
+            Height="0"
+            MinWidth="0"
+            MinHeight="0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            AutomationProperties.AccessibilityView="Raw"
+            IsHitTestVisible="False"
+            IsTabStop="True"
+            Opacity="0"
+            UseSystemFocusVisuals="False"
+            GettingFocus="EditorFocusSink_GettingFocus" />
     </Grid>
 </Page>

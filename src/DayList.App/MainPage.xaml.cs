@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
 using VirtualKey = Windows.System.VirtualKey;
 using VirtualKeyModifiers = Windows.System.VirtualKeyModifiers;
 
@@ -48,7 +49,9 @@ public sealed partial class MainPage : Page
     private bool _pickerDeleteCommit;
     private string _composeCategory = DayTaskCategory.UncategorizedKey;
     private TaskRow? _dragRow;
+    private TaskRow? _fileDropRow;
     private TaskRow? _dropRow;
+    private int _sinkFocusGate;
     private CategoryCardModel? _dropCard;
     private DateTimeOffset _taskMenuAt = DateTimeOffset.MinValue;
     private bool _editingSection;
@@ -119,6 +122,9 @@ public sealed partial class MainPage : Page
             OpenSettings();
         };
         KeyboardAccelerators.Add(settingsKey);
+        // ScrollViewer and plain chrome mark pointer events handled and never
+        // take focus, so a task TextBox would keep the caret. Listen anyway.
+        AddHandler(PointerReleasedEvent, new PointerEventHandler(OnPagePointerReleased), true);
     }
 
     public AppSettings CurrentSettings => _settings.Copy();
@@ -1689,19 +1695,8 @@ public sealed partial class MainPage : Page
 
     private async Task AddAttachmentsAsync(TaskRow row)
     {
-        if (_closed || Suppressed)
+        if (!PrepareAttachmentChange())
             return;
-        if (!_settings.HasVault)
-        {
-            ShowStatus("先连接 Obsidian 库，附件才会复制进库。", InfoBarSeverity.Warning, "选择库", () => PickVault_Click(this, new RoutedEventArgs()));
-            return;
-        }
-
-        if (_pendingExternal)
-        {
-            ShowStatus("先处理笔记的外部更新，再添加附件。", InfoBarSeverity.Warning);
-            return;
-        }
 
         IReadOnlyList<string> paths;
         try
@@ -1717,36 +1712,51 @@ public sealed partial class MainPage : Page
         if (_closed || paths.Count == 0)
             return;
 
-        var added = 0;
-        string? error = null;
-        foreach (var path in paths)
-        {
-            try
-            {
-                var imported = AttachmentVault.Import(_settings.VaultPath, _date, path);
-                if (row.Attachments.Any(item =>
-                        string.Equals(item.RelativePath, imported.RelativePath, StringComparison.OrdinalIgnoreCase)))
-                {
-                    error = "这个文件已经附在这条任务上。";
-                    continue;
-                }
+        CommitAttachmentPaths(row, paths);
+    }
 
-                row.AddAttachment(imported, _settings.VaultPath);
-                added++;
-            }
-            catch (Exception ex)
-            {
-                error = ex.Message;
-            }
+    private bool PrepareAttachmentChange()
+    {
+        if (_closed || Suppressed)
+            return false;
+        if (!_settings.HasVault)
+        {
+            ShowStatus("先连接 Obsidian 库，附件才会复制进库。", InfoBarSeverity.Warning, "选择库", () => PickVault_Click(this, new RoutedEventArgs()));
+            return false;
         }
 
-        if (added > 0)
+        if (_pendingExternal)
+        {
+            ShowStatus("先处理笔记的外部更新，再添加附件。", InfoBarSeverity.Warning);
+            return false;
+        }
+
+        return true;
+    }
+
+    private void CommitAttachmentPaths(TaskRow row, IReadOnlyList<string> paths)
+    {
+        if (_closed || paths.Count == 0)
+            return;
+        if (!PrepareAttachmentChange())
+            return;
+
+        var batch = AttachmentVault.ImportMany(
+            _settings.VaultPath,
+            _date,
+            paths,
+            row.Attachments.Select(item => item.RelativePath));
+        foreach (var imported in batch.Added)
+            row.AddAttachment(imported, _settings.VaultPath);
+
+        if (batch.Added.Count > 0)
             Persist();
 
-        if (error is not null)
+        var added = batch.Added.Count;
+        if (batch.Error is not null)
         {
             var suffix = added > 0 ? " 已添加 " + added.ToString(CultureInfo.InvariantCulture) + " 个。" : "";
-            ShowStatus(error + suffix, InfoBarSeverity.Error);
+            ShowStatus(batch.Error + suffix, InfoBarSeverity.Error);
             return;
         }
 
@@ -1754,6 +1764,45 @@ public sealed partial class MainPage : Page
             ShowStatus("已添加附件。", InfoBarSeverity.Success);
         else if (added > 1)
             ShowStatus("已添加 " + added.ToString(CultureInfo.InvariantCulture) + " 个附件。", InfoBarSeverity.Success);
+    }
+
+    private async Task DropAttachmentsAsync(TaskRow row, DataPackageView view)
+    {
+        if (!PrepareAttachmentChange())
+            return;
+
+        IReadOnlyList<IStorageItem> items;
+        try
+        {
+            items = await view.GetStorageItemsAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("无法读取拖入的文件。" + ex.Message, InfoBarSeverity.Error);
+            return;
+        }
+
+        if (_closed)
+            return;
+
+        if (items.Count == 0)
+        {
+            ShowStatus("没有读到可以附加的文件。", InfoBarSeverity.Error);
+            return;
+        }
+
+        var paths = new List<string>(items.Count);
+        foreach (var item in items)
+        {
+            if (item is StorageFile file && !string.IsNullOrWhiteSpace(file.Path))
+                paths.Add(file.Path);
+            else if (!string.IsNullOrWhiteSpace(item.Path))
+                paths.Add(item.Path);
+            else
+                paths.Add("");
+        }
+
+        CommitAttachmentPaths(row, paths);
     }
 
     private async void AttachmentOpen_Click(object sender, RoutedEventArgs e)
@@ -1951,8 +2000,87 @@ public sealed partial class MainPage : Page
         if (e.Key != VirtualKey.Enter)
             return;
         e.Handled = true;
-        if (sender is TextBox box)
-            box.Focus(FocusState.Unfocused);
+        ReleaseTaskEditorFocus();
+    }
+
+    private void OnPagePointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (_closed || _dragRow is not null)
+            return;
+        if (FocusManager.GetFocusedElement(XamlRoot) is not TextBox box || box.DataContext is not TaskRow)
+            return;
+        if (e.OriginalSource is DependencyObject source && IsUnder(box, source))
+            return;
+
+        ReleaseTaskEditorFocus();
+    }
+
+    /// <summary>
+    /// Move focus off a task TextBox. Clicking the page background, sidebar,
+    /// or other non-task chrome does not focus those elements, so the caret
+    /// would otherwise stay in the editor until another task TextBox is clicked.
+    /// </summary>
+    private void ReleaseTaskEditorFocus()
+    {
+        if (_closed || EditorFocusSink is null)
+            return;
+        if (FocusManager.GetFocusedElement(XamlRoot) is not TextBox box || box.DataContext is not TaskRow)
+            return;
+
+        // Leave the sink focusable so the caret does not jump back to the task.
+        // Keyboard tab onto it is redirected in EditorFocusSink_GettingFocus.
+        _sinkFocusGate++;
+        try
+        {
+            EditorFocusSink.IsTabStop = true;
+            EditorFocusSink.UseSystemFocusVisuals = false;
+            EditorFocusSink.Focus(FocusState.Programmatic);
+        }
+        finally
+        {
+            _sinkFocusGate--;
+        }
+    }
+
+    private void EditorFocusSink_GettingFocus(UIElement sender, GettingFocusEventArgs args)
+    {
+        if (_sinkFocusGate > 0 || args.FocusState != FocusState.Keyboard)
+            return;
+
+        EditorFocusSink.IsTabStop = false;
+        var direction = args.Direction == FocusNavigationDirection.Previous
+            ? FocusNavigationDirection.Previous
+            : FocusNavigationDirection.Next;
+        DependencyObject? next;
+        try
+        {
+            next = FocusManager.FindNextElement(direction);
+        }
+        finally
+        {
+            EditorFocusSink.IsTabStop = true;
+        }
+
+        if (next is null || ReferenceEquals(next, sender))
+        {
+            args.Cancel = true;
+            args.Handled = true;
+            return;
+        }
+
+        args.NewFocusedElement = next;
+        args.Handled = true;
+    }
+
+    private static bool IsUnder(DependencyObject ancestor, DependencyObject node)
+    {
+        for (DependencyObject? current = node; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (ReferenceEquals(current, ancestor))
+                return true;
+        }
+
+        return false;
     }
 
     private void FinishTextEdit(object sender)
@@ -2015,7 +2143,20 @@ public sealed partial class MainPage : Page
 
     private void TaskRow_DragOver(object sender, DragEventArgs e)
     {
-        if (_dragRow is null || sender is not FrameworkElement { DataContext: TaskRow target })
+        if (_dragRow is null)
+        {
+            if (!HasStorageItems(e.DataView) || sender is not FrameworkElement { DataContext: TaskRow row })
+                return;
+            e.AcceptedOperation = DataPackageOperation.Copy;
+            e.DragUIOverride.IsCaptionVisible = true;
+            e.DragUIOverride.Caption = "添加附件";
+            e.Handled = true;
+            _fileDropRow = row;
+            HighlightRow(row);
+            return;
+        }
+
+        if (sender is not FrameworkElement { DataContext: TaskRow target })
             return;
         e.AcceptedOperation = DataPackageOperation.Move;
         e.DragUIOverride.IsGlyphVisible = false;
@@ -2024,6 +2165,43 @@ public sealed partial class MainPage : Page
         e.Handled = true;
         HighlightRow(ReferenceEquals(_dragRow, target) ? null : target);
         HighlightCard(same ? null : CardFor(target));
+    }
+
+    private void TaskRow_DragLeave(object sender, DragEventArgs e)
+    {
+        if (_dragRow is not null)
+            return;
+        if (sender is not FrameworkElement element || element.DataContext is not TaskRow row)
+            return;
+        if (!ReferenceEquals(_fileDropRow, row))
+            return;
+
+        try
+        {
+            var point = e.GetPosition(element);
+            if (point.X >= 0 && point.Y >= 0 && point.X < element.ActualWidth && point.Y < element.ActualHeight)
+                return;
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        _fileDropRow = null;
+        if (ReferenceEquals(_dropRow, row))
+            HighlightRow(null);
+    }
+
+    private static bool HasStorageItems(DataPackageView view)
+    {
+        try
+        {
+            return view.Contains(StandardDataFormats.StorageItems);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     private void Header_DragOver(object sender, DragEventArgs e)
@@ -2037,9 +2215,37 @@ public sealed partial class MainPage : Page
         HighlightCard(card);
     }
 
-    private void TaskRow_Drop(object sender, DragEventArgs e)
+    private async void TaskRow_Drop(object sender, DragEventArgs e)
     {
-        if (_dragRow is null || sender is not FrameworkElement { DataContext: TaskRow target } || ReferenceEquals(_dragRow, target))
+        if (_dragRow is null)
+        {
+            if (sender is not FrameworkElement { DataContext: TaskRow row } || !HasStorageItems(e.DataView))
+            {
+                ClearDropHighlight();
+                return;
+            }
+
+            e.Handled = true;
+            _fileDropRow = null;
+            ClearDropHighlight();
+            var deferral = e.GetDeferral();
+            try
+            {
+                await DropAttachmentsAsync(row, e.DataView);
+            }
+            catch (Exception ex)
+            {
+                ShowStatus("没有添加附件。" + ex.Message, InfoBarSeverity.Error);
+            }
+            finally
+            {
+                deferral.Complete();
+            }
+
+            return;
+        }
+
+        if (sender is not FrameworkElement { DataContext: TaskRow target } || ReferenceEquals(_dragRow, target))
         {
             ClearDropHighlight();
             return;
@@ -2170,6 +2376,7 @@ public sealed partial class MainPage : Page
 
     private void ClearDropHighlight()
     {
+        _fileDropRow = null;
         HighlightRow(null);
         HighlightCard(null);
     }
