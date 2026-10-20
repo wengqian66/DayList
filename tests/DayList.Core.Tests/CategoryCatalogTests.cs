@@ -162,6 +162,30 @@ public class CategoryCatalogTests
     }
 
     [Fact]
+    public void MainList_OmitsSavedCategoriesWithNoTasks_PickerStillListsThem()
+    {
+        var catalog = new[] { "工作", "生活", "运动" };
+        var tasks = new List<DayTask>
+        {
+            new() { Text = "周报", Category = "工作" }
+        };
+
+        var sections = CategoryGrouping.ForMainList(tasks, task => task.Category);
+        Assert.Equal(new[] { "工作" }, sections.Select(section => section.Key).ToArray());
+        Assert.DoesNotContain(sections, section => section.Items.Count == 0);
+
+        var picker = CategoryCatalog.PickerEntries(catalog, tasks.Select(task => task.Category));
+        Assert.Contains(picker, entry => entry.Label == "生活" && entry.CanDelete);
+        Assert.Contains(picker, entry => entry.Label == "运动" && entry.CanDelete);
+        Assert.Contains(picker, entry => entry.Label == "工作" && entry.CanDelete);
+
+        tasks.Add(new DayTask { Text = "跑步", Category = "运动" });
+        sections = CategoryGrouping.ForMainList(tasks, task => task.Category);
+        Assert.Equal(new[] { "工作", "运动" }, sections.Select(section => section.Key).ToArray());
+        Assert.Equal(new[] { "跑步" }, sections.Single(section => section.Key == "运动").Items.Select(task => task.Text).ToArray());
+    }
+
+    [Fact]
     public void WithoutTasks_KeepsCatalogOrder_AndSkipsNamesAlreadyUsed()
     {
         var idle = CategoryCatalog.WithoutTasks(

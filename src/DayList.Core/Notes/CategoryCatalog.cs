@@ -60,6 +60,8 @@ public static class CategoryCatalog
 
     /// <summary>
     /// Catalog names that have no task on the day being shown.
+    /// The main task list does not render these as headings. The category
+    /// picker still lists them so a task can be filed there or the name deleted.
     /// </summary>
     public static IReadOnlyList<string> WithoutTasks(IEnumerable<string?>? categories, IEnumerable<string?>? used)
     {
