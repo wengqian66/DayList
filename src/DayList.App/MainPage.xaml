@@ -1175,7 +1175,7 @@
                         BorderThickness="0"
                         FontSize="14"
                         KeyDown="AddBox_KeyDown"
-                        PlaceholderText="添加任务…  明天 9 点 写周报 #工作"
+                        PlaceholderText="输入任务，回车添加 / Type a task, Enter to add"
                         VerticalAlignment="Center" />
                     <ComboBox
                         x:Name="CategoryPicker"
@@ -1186,6 +1186,7 @@
                         Height="36"
                         VerticalAlignment="Center"
                         CornerRadius="14"
+                        DropDownClosed="CategoryPicker_DropDownClosed"
                         SelectionChanged="CategoryPicker_SelectionChanged"
                         ToolTipService.ToolTip="新任务的分类。新建过的会一直留在这里。" />
                 </Grid>

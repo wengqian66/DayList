@@ -44,6 +44,7 @@ public sealed partial class MainPage : Page
     private bool _ready;
     private bool _closed;
     private bool _rebuildingPicker;
+    private bool _categoryPromptOpen;
     private string _composeCategory = DayTaskCategory.UncategorizedKey;
     private TaskRow? _dragRow;
     private TaskRow? _dropRow;
@@ -596,24 +597,65 @@ public sealed partial class MainPage : Page
         var selected = CategoryPicker.SelectedItem.ToString() ?? DayTaskCategory.UncategorizedLabel;
         if (selected == DayTaskCategory.NewCategorySentinel)
         {
-            var created = await PromptNewCategoryAsync();
-            if (created is null)
+            _categoryPromptOpen = true;
+            try
             {
-                _rebuildingPicker = true;
-                CategoryPicker.SelectedItem = DayTaskCategory.IsUncategorized(_composeCategory)
-                    ? DayTaskCategory.UncategorizedLabel
-                    : _composeCategory;
-                _rebuildingPicker = false;
-                return;
+                var created = await PromptNewCategoryAsync();
+                if (created is null)
+                {
+                    _rebuildingPicker = true;
+                    CategoryPicker.SelectedItem = DayTaskCategory.IsUncategorized(_composeCategory)
+                        ? DayTaskCategory.UncategorizedLabel
+                        : _composeCategory;
+                    _rebuildingPicker = false;
+                }
+                else
+                {
+                    _composeCategory = created;
+                    RememberCategory(created);
+                    RefreshCategoryPicker();
+                }
+            }
+            finally
+            {
+                _categoryPromptOpen = false;
             }
 
-            _composeCategory = created;
-            RememberCategory(created);
-            RefreshCategoryPicker();
+            FocusAddBoxAfterCategory();
             return;
         }
 
         _composeCategory = DayTaskCategory.Normalize(selected);
+    }
+
+    private void CategoryPicker_DropDownClosed(object sender, object e)
+    {
+        if (_categoryPromptOpen)
+            return;
+        FocusAddBoxAfterCategory();
+    }
+
+    /// <summary>
+    /// Category selection is finished. Focus returns after the current key
+    /// so the Enter that closed the list does not also add a task.
+    /// </summary>
+    private void FocusAddBoxAfterCategory()
+    {
+        void Later()
+        {
+            if (_closed || _categoryPromptOpen || AddBox is null)
+                return;
+            AddBox.Focus(FocusState.Programmatic);
+            var len = AddBox.Text?.Length ?? 0;
+            AddBox.SelectionStart = len;
+            AddBox.SelectionLength = 0;
+        }
+
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
+        {
+            Later();
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, Later);
+        });
     }
 
     private async Task<string?> PromptNewCategoryAsync(string? title = null)
