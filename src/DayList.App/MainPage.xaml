@@ -618,7 +618,8 @@
                         Padding="8,0"
                         Background="Transparent"
                         BorderThickness="0"
-                        CornerRadius="10">
+                        CornerRadius="10"
+                        ToolTipService.ToolTip="选择日期。有任务或灵感的日子颜色更深。">
                         <Button.Content>
                             <TextBlock
                                 x:Name="DateLabel"
@@ -628,7 +629,11 @@
                                 TextTrimming="CharacterEllipsis" />
                         </Button.Content>
                         <Button.Flyout>
-                            <Flyout Placement="Bottom" FlyoutPresenterStyle="{StaticResource SoftFlyoutPresenterStyle}">
+                            <Flyout
+                                x:Name="DateFlyout"
+                                Placement="Bottom"
+                                FlyoutPresenterStyle="{StaticResource SoftFlyoutPresenterStyle}"
+                                Opened="DateFlyout_Opened">
                                 <!-- Dark chrome from SoftFlyoutPresenterStyle; light panel only under date grid -->
                                 <Grid Width="320" Height="340">
                                     <Border
@@ -641,6 +646,7 @@
                                         Height="340"
                                         Style="{StaticResource SoftCalendarViewStyle}"
                                         CalendarIdentifier="GregorianCalendar"
+                                        CalendarViewDayItemChanging="DayCalendar_DayItemChanging"
                                         IsTodayHighlighted="True"
                                         Language="zh-Hans-CN"
                                         SelectedDatesChanged="DayCalendar_SelectedDatesChanged"

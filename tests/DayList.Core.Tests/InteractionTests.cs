@@ -73,6 +73,38 @@ public class InteractionTests
     }
 
     [Fact]
+    public void DayRecordIndex_MarksTasksAndInspirations_SkipsEmptyDays()
+    {
+        using var vault = new TempVault();
+        var settings = vault.Settings();
+        var withTask = new DateOnly(2026, 10, 15);
+        var withDone = new DateOnly(2026, 10, 16);
+        var withIdea = new DateOnly(2026, 10, 19);
+        var empty = new DateOnly(2026, 10, 20);
+
+        DailyNoteStore.Write(settings, withTask, new[]
+        {
+            new DayTask { Text = "买菜", Category = "生活" }
+        });
+        DailyNoteStore.Write(settings, withDone, new[]
+        {
+            new DayTask { Text = "写周报", Category = "工作", IsDone = true }
+        });
+        DailyNoteStore.WriteInspirations(settings, withIdea, new[]
+        {
+            new InspirationEntry { Text = "一句" }
+        });
+
+        var marks = DayRecordIndex.WithRecords(settings, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 31));
+
+        Assert.Contains(withTask, marks);
+        Assert.Contains(withDone, marks);
+        Assert.Contains(withIdea, marks);
+        Assert.DoesNotContain(empty, marks);
+        Assert.Empty(DayRecordIndex.WithRecords(new AppSettings(), withTask, empty));
+    }
+
+    [Fact]
     public void AppSettings_PersistsDesktopFlags()
     {
         var path = Path.Combine(Path.GetTempPath(), "daylist-settings-" + Guid.NewGuid().ToString("N") + ".json");

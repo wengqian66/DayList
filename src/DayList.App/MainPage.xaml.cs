@@ -81,6 +81,13 @@ public sealed partial class MainPage : Page
     private int _rebuildDepth;
     private bool _rebuildQueued;
     private bool _suspendRowRebuild;
+    private readonly HashSet<DateOnly> _daysWithRecords = new();
+    private DateOnly _recordWindowStart;
+    private DateOnly _recordWindowEnd;
+    private bool _recordWindowReady;
+    private Brush? _markedDayBrush;
+    private Brush? _clearDayBrush;
+    private static readonly Color CalendarMarkDot = Color.FromArgb(255, 0x8C, 0x6A, 0x45);
 
     public MainPage()
     {
@@ -455,9 +462,9 @@ public sealed partial class MainPage : Page
         var expanded = _overdueExpanded && _overdue.Count > 0;
         OverdueChevron.Glyph = expanded ? "\uE70D" : "\uE76C";
         OverdueList.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
-        OverdueTitle.Text = _pendingOverdue.Count == 0
-            ? "昨天未完成"
-            : $"昨天未完成 {_overdue.Count} 项";
+        OverdueTitle.Text = CarryOverOffer.BannerTitle(
+            DateOnly.FromDateTime(DateTime.Now),
+            _overdue.Select(row => row.Item.Date).ToList());
     }
 
     private void OverdueHeader_Tapped(object sender, TappedRoutedEventArgs e)
@@ -956,6 +963,72 @@ public sealed partial class MainPage : Page
             PopSuppress();
         }
     }
+
+    private void DateFlyout_Opened(object sender, object e)
+    {
+        _recordWindowReady = false;
+        ApplyRecordMarks(DayCalendar);
+    }
+
+    private void DayCalendar_DayItemChanging(CalendarView sender, CalendarViewDayItemChangingEventArgs args)
+    {
+        if (args.Phase == 0)
+        {
+            args.RegisterUpdateCallback(DayCalendar_DayItemChanging);
+            return;
+        }
+
+        PaintCalendarDay(args.Item);
+    }
+
+    private void ApplyRecordMarks(DependencyObject root)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is CalendarViewDayItem day)
+                PaintCalendarDay(day);
+            else
+                ApplyRecordMarks(child);
+        }
+    }
+
+    private void PaintCalendarDay(CalendarViewDayItem item)
+    {
+        var date = DateOnly.FromDateTime(item.Date.LocalDateTime.Date);
+        EnsureRecordMarks(date);
+        var marked = _daysWithRecords.Contains(date);
+        item.SetDensityColors(marked ? new[] { CalendarMarkDot } : Array.Empty<Color>());
+        item.Background = marked ? MarkedDayBrush() : ClearDayBrush();
+    }
+
+    private void EnsureRecordMarks(DateOnly day)
+    {
+        if (_recordWindowReady && day >= _recordWindowStart && day <= _recordWindowEnd)
+            return;
+
+        var firstOfMonth = new DateOnly(day.Year, day.Month, 1);
+        _recordWindowStart = firstOfMonth.AddDays(-7);
+        _recordWindowEnd = firstOfMonth.AddMonths(1).AddDays(6);
+        _daysWithRecords.Clear();
+        foreach (var marked in DayRecordIndex.WithRecords(_settings, _recordWindowStart, _recordWindowEnd))
+            _daysWithRecords.Add(marked);
+        _recordWindowReady = true;
+    }
+
+    private Brush MarkedDayBrush()
+    {
+        if (_markedDayBrush is not null)
+            return _markedDayBrush;
+        if (Application.Current.Resources.TryGetValue("SoftCalendarMarkedBrush", out var value) && value is Brush brush)
+            _markedDayBrush = brush;
+        else
+            _markedDayBrush = new SolidColorBrush(Color.FromArgb(255, 0xE4, 0xCD, 0xB4));
+        return _markedDayBrush;
+    }
+
+    private Brush ClearDayBrush() => _clearDayBrush ??= new SolidColorBrush(Color.FromArgb(0, 0, 0, 0));
 
     private void UpdateStats()
     {

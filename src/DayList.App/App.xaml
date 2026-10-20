@@ -208,6 +208,7 @@
             <SolidColorBrush x:Key="SoftAccentBrush" Color="#FF5B9BD5" />
             <SolidColorBrush x:Key="SoftCalendarChromeBrush" Color="#FFE0D2C0" />
             <SolidColorBrush x:Key="SoftCalendarDayBrush" Color="#FFF7F2EA" />
+            <SolidColorBrush x:Key="SoftCalendarMarkedBrush" Color="#FFE4CDB4" />
             <SolidColorBrush x:Key="SoftInfoBarSuccessBrush" Color="#FFE5F0D8" />
             <SolidColorBrush x:Key="SoftInfoBarWarningBrush" Color="#FFF3E0C4" />
             <SolidColorBrush x:Key="SoftInfoBarErrorBrush" Color="#FFF3D6D2" />
