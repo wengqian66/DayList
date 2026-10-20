@@ -686,7 +686,7 @@ public sealed partial class MainPage : Page
         // handler, so XAML handlers for those events never run. Click is the
         // event the button actually raises. The combo row selects only on an
         // unhandled pointer release, so this click does not change category.
-        e.Handled = true;
+        // RoutedEventArgs (Button.Click) has no Handled in WinUI.
         if (_pickerDeleteCommit || _closed)
             return;
 
