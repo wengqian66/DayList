@@ -49,14 +49,71 @@ public sealed class CarryOverMemory
 
 public readonly record struct TodayTaskRef(string Text, string Category);
 
+/// <summary>A task checked off on a daily note. A later date retires the same task from earlier notes.</summary>
+public readonly record struct FinishedTaskRef(DateOnly Date, string Text, string Category);
+
 /// <summary>
 /// Decides which earlier open tasks are still worth offering on Today.
 /// Showing the banner used to rescan every open line, so a successful bring-into-today
 /// came back on the next visit. Handled keys and tasks already on today both dismiss it.
+/// A line left unchecked in an older note is also finished once the same task is checked on a later day.
 /// </summary>
 public static class CarryOverOffer
 {
     public const string AllLabel = "全部";
+    public const string YesterdayLabel = "昨天未完成";
+    public const string EarlierLabel = "更早未完成";
+
+    /// <summary>
+    /// Drops an open line when the same text and category were checked off on a strictly later day.
+    /// 「带入今日」 copies forward and does not tick the source note, so that later check is the completion.
+    /// </summary>
+    public static IReadOnlyList<OverdueTaskItem> StillUnfinished(
+        IReadOnlyList<OverdueTaskItem> open,
+        IEnumerable<FinishedTaskRef> finished)
+    {
+        var latest = new Dictionary<(string Category, string Text), DateOnly>();
+        foreach (var done in finished)
+        {
+            var text = (done.Text ?? "").Trim();
+            if (text.Length == 0)
+                continue;
+            var key = (DayTaskCategory.Normalize(done.Category), text);
+            if (!latest.TryGetValue(key, out var existing) || done.Date > existing)
+                latest[key] = done.Date;
+        }
+
+        if (latest.Count == 0)
+            return open.Where(item => !string.IsNullOrWhiteSpace(item.Text)).ToList();
+
+        var pending = new List<OverdueTaskItem>(open.Count);
+        foreach (var item in open)
+        {
+            var text = (item.Text ?? "").Trim();
+            if (text.Length == 0)
+                continue;
+            var key = (DayTaskCategory.Normalize(item.Category), text);
+            if (latest.TryGetValue(key, out var doneOn) && doneOn > item.Date)
+                continue;
+            pending.Add(item);
+        }
+
+        return pending;
+    }
+
+    /// <summary>
+    /// 「昨天未完成」 only when every row is the previous calendar day.
+    /// Older leftovers stay visible, but the title says 「更早未完成」 so it matches the row date.
+    /// </summary>
+    public static string BannerTitle(DateOnly today, IReadOnlyList<DateOnly> itemDates)
+    {
+        if (itemDates.Count == 0)
+            return YesterdayLabel;
+
+        var yesterday = today.AddDays(-1);
+        var label = itemDates.All(date => date == yesterday) ? YesterdayLabel : EarlierLabel;
+        return $"{label} {itemDates.Count} 项";
+    }
 
     public static bool AlreadyOnToday(OverdueTaskItem item, IEnumerable<TodayTaskRef> todayTasks)
     {

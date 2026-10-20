@@ -112,6 +112,112 @@ public class RetentionTests
     }
 
     [Fact]
+    public void StillUnfinished_DropsLinesCheckedOffOnALaterDay()
+    {
+        var source = new DateOnly(2026, 10, 15);
+        var finishedOn = new DateOnly(2026, 10, 16);
+        var open = new[]
+        {
+            Open("买菜", "生活", source),
+            Open("洗碗", "生活", source),
+            Open("写周报", "工作", source),
+            Open("回邮件", "工作", source)
+        };
+        var finished = open.Select(item => new FinishedTaskRef(finishedOn, item.Text, item.Category));
+
+        Assert.Empty(CarryOverOffer.StillUnfinished(open, finished));
+    }
+
+    [Fact]
+    public void StillUnfinished_KeepsANewerOpenCopy_AndDoesNotCrossCategories()
+    {
+        var older = Open("买菜", "生活", new DateOnly(2026, 10, 15));
+        var newer = Open("买菜", "生活", new DateOnly(2026, 10, 19));
+        var otherCategory = Open("买菜", "工作", new DateOnly(2026, 10, 15));
+        var finished = new[] { new FinishedTaskRef(new DateOnly(2026, 10, 16), "  买菜  ", "生活") };
+
+        var pending = CarryOverOffer.StillUnfinished(new[] { older, newer, otherCategory }, finished);
+
+        Assert.Equal(2, pending.Count);
+        Assert.Contains(pending, item => item.Date == newer.Date && item.Category == "生活");
+        Assert.Contains(pending, item => item.Category == "工作");
+        Assert.DoesNotContain(pending, item => item.Date == older.Date && item.Category == "生活");
+    }
+
+    [Fact]
+    public void October20_DoesNotReviveOctober15_AfterTheyWereCheckedOnOctober16()
+    {
+        using var vault = new TempVault();
+        var settings = vault.Settings();
+        var source = new DateOnly(2026, 10, 15);
+        var checkedOn = new DateOnly(2026, 10, 16);
+        var laterWrite = new DateOnly(2026, 10, 19);
+        var today = new DateOnly(2026, 10, 20);
+        var tasks = new[]
+        {
+            new DayTask { Text = "买菜", Category = "生活" },
+            new DayTask { Text = "洗碗", Category = "生活" },
+            new DayTask { Text = "写周报", Category = "工作" },
+            new DayTask { Text = "回邮件", Category = "工作" }
+        };
+
+        DailyNoteStore.Write(settings, source, tasks);
+        DailyNoteStore.Write(settings, checkedOn, tasks.Select(task =>
+        {
+            var copy = task.Copy();
+            copy.IsDone = true;
+            return copy;
+        }).ToArray());
+        DailyNoteStore.Write(settings, laterWrite, new[]
+        {
+            new DayTask { Text = "别的事", Category = "生活", IsDone = true },
+            new DayTask { Text = "还开着", Category = "工作" }
+        });
+
+        var open = OverdueScan.CollectOpenBefore(settings, today);
+        Assert.DoesNotContain(open, item => item.Date == source);
+        var only = Assert.Single(open);
+        Assert.Equal("还开着", only.Text);
+        Assert.Equal(laterWrite, only.Date);
+        Assert.Equal("昨天未完成 1 项", CarryOverOffer.BannerTitle(today, open.Select(item => item.Date).ToList()));
+        var pending = CarryOverOffer.Pending(open, Array.Empty<TodayTaskRef>(), new CarryOverMemory(), today);
+        Assert.Equal("还开着", Assert.Single(pending).Text);
+
+        var stillOpen = Open("还没做", "生活", source);
+        var dismissed = CarryOverOffer.MarkHandled(new CarryOverMemory(), today, new[] { stillOpen });
+        Assert.Empty(CarryOverOffer.Pending(new[] { stillOpen }, Array.Empty<TodayTaskRef>(), dismissed, today));
+        Assert.Single(CarryOverOffer.Pending(
+            new[] { stillOpen },
+            Array.Empty<TodayTaskRef>(),
+            dismissed,
+            today.AddDays(1)));
+    }
+
+    [Fact]
+    public void BannerTitle_SaysYesterdayOnlyWhenEveryItemIsThePreviousDay()
+    {
+        var today = new DateOnly(2026, 10, 20);
+        var yesterday = today.AddDays(-1);
+
+        Assert.Equal("昨天未完成", CarryOverOffer.BannerTitle(today, Array.Empty<DateOnly>()));
+        Assert.Equal(
+            "昨天未完成 2 项",
+            CarryOverOffer.BannerTitle(today, new[] { yesterday, yesterday }));
+        Assert.Equal(
+            "更早未完成 4 项",
+            CarryOverOffer.BannerTitle(today, new[]
+            {
+                new DateOnly(2026, 10, 15),
+                new DateOnly(2026, 10, 15),
+                new DateOnly(2026, 10, 15),
+                new DateOnly(2026, 10, 15)
+            }));
+        Assert.Equal(
+            "更早未完成 2 项",
+            CarryOverOffer.BannerTitle(today, new[] { yesterday, new DateOnly(2026, 10, 15) }));
+    }
+
+    [Fact]
     public void Store_RoundTripsHandledKeys_ForTheCalendarDay()
     {
         var path = Path.Combine(Path.GetTempPath(), "daylist-carry-" + Guid.NewGuid().ToString("N") + ".json");

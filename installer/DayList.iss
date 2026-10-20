@@ -2,7 +2,7 @@
 ; Built by scripts/publish-installer.ps1
 #define MyAppName "DayList"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.2.2"
+  #define MyAppVersion "1.2.3"
 #endif
 #define MyAppPublisher "DayList"
 #define MyAppExeName "DayList.exe"

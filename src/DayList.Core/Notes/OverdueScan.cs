@@ -22,7 +22,8 @@ public static class OverdueScan
         if (start.Year != today.Year || start.Month != today.Month)
             start = new DateOnly(today.Year, today.Month, 1);
 
-        var items = new List<OverdueTaskItem>();
+        var open = new List<OverdueTaskItem>();
+        var finished = new List<FinishedTaskRef>();
         for (var day = start; day < today; day = day.AddDays(1))
         {
             DailyNoteSnapshot snapshot;
@@ -37,19 +38,28 @@ public static class OverdueScan
 
             foreach (var task in snapshot.Tasks)
             {
-                if (task.IsDone || string.IsNullOrWhiteSpace(task.Text))
+                if (string.IsNullOrWhiteSpace(task.Text))
                     continue;
 
-                items.Add(new OverdueTaskItem(
+                var text = task.Text.Trim();
+                var category = DayTaskCategory.Normalize(task.Category);
+                if (task.IsDone)
+                {
+                    finished.Add(new FinishedTaskRef(day, text, category));
+                    continue;
+                }
+
+                open.Add(new OverdueTaskItem(
                     day,
-                    task.Text.Trim(),
-                    DayTaskCategory.Normalize(task.Category),
+                    text,
+                    category,
                     task.Indent,
                     task.Bullet,
                     task.DoneMark));
             }
         }
 
-        return items;
+        // Source notes stay unchecked after a task is copied forward and ticked on a later day.
+        return CarryOverOffer.StillUnfinished(open, finished);
     }
 }

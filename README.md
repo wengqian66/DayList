@@ -15,14 +15,14 @@ Windows 上的每日待办。清单不另存数据库，只读写 Obsidian 库�
 
 ## 下载安装（推荐）
 
-从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.2.2。
+从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.2.3。
 
 - 自带 .NET 8 与 Windows App SDK，**无需再装 SDK 或运行时**
 - 默认装到 `Program Files\DayList`，可选桌面快捷方式
 - 首次打开后在设置里指定你的 **Obsidian 库文件夹**
 - 卸载后本机设置仍保留在 `%AppData%\DayList`（含 API Key，不会进安装包或仓库）
 
-当前版本：1.2.2。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
+当前版本：1.2.3。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
 
 ## 环境
 
@@ -60,7 +60,7 @@ src\DayList.App\bin\Release\net8.0-windows10.0.19041.0\win-x64\DayList.exe
 
 `YYYY-MM-DD` 和 `yyyy-MM-dd` 都可以。也支持 `YYYY/MM/DD`、`DD-MM-YYYY` 这种常见写法。新文件用 UTF-8（不带 BOM）；已有文件会保留原来的 BOM 和换行。
 
-标题栏上的文件夹按钮会在资源管理器里打开库根目录。左右箭头和日期按钮用来换天，日期按钮里是日历。
+标题栏上的文件夹按钮会在资源管理器里打开库根目录。左右箭头和日期按钮用来换天，日期按钮里是日历。有任务或灵感的日期颜色更深。
 
 设置存在 `%AppData%\DayList\settings.json`。
 
@@ -105,10 +105,10 @@ API Key 以明文保存在本机的设置文件里，不会写进笔记。
 本机需安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) 与 [Inno Setup 6](https://jrsoftware.org/isinfo.php)。在仓库根目录：
 
 ```powershell
-  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.2
+  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.3
 ```
 
-完成后得到 `dist\DayList-Setup-1.2.2.exe`（自包含 win-x64）。
+完成后得到 `dist\DayList-Setup-1.2.3.exe`（自包含 win-x64）。
 
 ## 测试
 
