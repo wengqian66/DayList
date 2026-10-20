@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Windows.UI;
 using DayList.Core;
 using Microsoft.UI.Xaml;
@@ -49,6 +50,7 @@ public sealed partial class MainPage : Page
     private bool _pickerDeleteCommit;
     private string _composeCategory = DayTaskCategory.UncategorizedKey;
     private TaskRow? _dragRow;
+    private Grid? _pointerRow;
     private TaskRow? _fileDropRow;
     private TaskRow? _dropRow;
     private int _sinkFocusGate;
@@ -988,6 +990,10 @@ public sealed partial class MainPage : Page
         inspire.Click += (_, _) => ConvertTaskToInspiration(row);
         flyout.Items.Add(inspire);
 
+        var remove = new MenuFlyoutItem { Text = "删除" };
+        remove.Click += (_, _) => DeleteRow(row);
+        flyout.Items.Add(remove);
+
         flyout.Items.Add(new MenuFlyoutSeparator());
         flyout.Items.Add(new MenuFlyoutItem { Text = "取消" });
 
@@ -1915,7 +1921,14 @@ public sealed partial class MainPage : Page
 
     private void Delete_Click(object sender, RoutedEventArgs e)
     {
-        if (Suppressed || (sender as FrameworkElement)?.DataContext is not TaskRow row)
+        if ((sender as FrameworkElement)?.DataContext is not TaskRow row)
+            return;
+        DeleteRow(row);
+    }
+
+    private void DeleteRow(TaskRow row)
+    {
+        if (Suppressed)
             return;
         if (_pendingExternal)
         {
@@ -3536,21 +3549,132 @@ public sealed partial class MainPage : Page
             ShowStatus($"小节标题已改为「{raw}」", InfoBarSeverity.Success);
     }
 
-    private void TaskRow_PointerEntered(object sender, PointerRoutedEventArgs e) =>
-        SetRowDeleteOpacity(sender, 1);
+    private sealed class RowHoverState
+    {
+        public int Generation;
+        public bool PointerInside;
+    }
 
-    private void TaskRow_PointerExited(object sender, PointerRoutedEventArgs e) =>
-        SetRowDeleteOpacity(sender, 0.28);
+    private static readonly ConditionalWeakTable<Grid, RowHoverState> RowHoverStates = new();
 
-    private static void SetRowDeleteOpacity(object sender, double opacity)
+    private static RowHoverState HoverState(Grid grid) => RowHoverStates.GetOrCreateValue(grid);
+
+    private void TaskRow_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (FindTaskRowGrid(sender) is not Grid grid)
+            return;
+        var state = HoverState(grid);
+        state.Generation++;
+        state.PointerInside = true;
+        if (_pointerRow is Grid previous && !ReferenceEquals(previous, grid))
+        {
+            var previousState = HoverState(previous);
+            previousState.PointerInside = false;
+            previousState.Generation++;
+            if (previous.IsLoaded && !RowContainsFocus(previous))
+                SetRowHoverActions(previous, shown: false);
+        }
+
+        _pointerRow = grid;
+        SetRowHoverActions(grid, shown: true);
+    }
+
+    private void TaskRow_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (FindTaskRowGrid(sender) is not Grid grid)
+            return;
+        // Moving onto a child (the buttons) also raises PointerExited on the row.
+        var point = e.GetCurrentPoint(grid).Position;
+        if (point.X >= 0 && point.Y >= 0 && point.X <= grid.ActualWidth && point.Y <= grid.ActualHeight)
+            return;
+
+        var state = HoverState(grid);
+        state.PointerInside = false;
+        var generation = ++state.Generation;
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (!grid.IsLoaded)
+                return;
+            var current = HoverState(grid);
+            if (current.Generation != generation || current.PointerInside || RowContainsFocus(grid))
+                return;
+            if (ReferenceEquals(_pointerRow, grid))
+                _pointerRow = null;
+            SetRowHoverActions(grid, shown: false);
+        });
+    }
+
+    private void TaskRow_GotFocus(object sender, RoutedEventArgs e)
+    {
+        if (sender is Grid grid)
+            SetRowHoverActions(grid, shown: true);
+    }
+
+    private void TaskRow_LostFocus(object sender, RoutedEventArgs e)
     {
         if (sender is not Grid grid)
             return;
-        foreach (var child in grid.Children)
+        // Focus may already be on the next control inside this row. Check after the move.
+        DispatcherQueue.TryEnqueue(() =>
         {
-            if (child is Button button && Equals(button.Tag, "delete"))
-                button.Opacity = opacity;
+            if (!grid.IsLoaded || HoverState(grid).PointerInside || RowContainsFocus(grid))
+                return;
+            SetRowHoverActions(grid, shown: false);
+        });
+    }
+
+    private static Grid? FindTaskRowGrid(object sender)
+    {
+        if (sender is not DependencyObject current)
+            return null;
+        for (; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (current is Grid grid && Equals(grid.Tag, "task-row"))
+                return grid;
         }
+
+        return null;
+    }
+
+    private static bool RowContainsFocus(Grid grid)
+    {
+        if (grid.XamlRoot is null)
+            return false;
+        if (FocusManager.GetFocusedElement(grid.XamlRoot) is not DependencyObject focused)
+            return false;
+        for (DependencyObject? current = focused; current is not null; current = VisualTreeHelper.GetParent(current))
+        {
+            if (ReferenceEquals(current, grid))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void SetRowHoverActions(Grid grid, bool shown)
+    {
+        var actions = FindTagged(grid, "rowHoverActions");
+        var status = FindTagged(grid, "rowStatus");
+        if (actions is not null)
+            actions.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+        if (status is not null)
+            status.Visibility = shown ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private static FrameworkElement? FindTagged(DependencyObject root, string tag)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is FrameworkElement element && Equals(element.Tag, tag))
+                return element;
+            var nested = FindTagged(child, tag);
+            if (nested is not null)
+                return nested;
+        }
+
+        return null;
     }
 
     private void ShowStatus(string message, InfoBarSeverity severity, string? action = null, Action? onAction = null)

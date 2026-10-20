@@ -343,22 +343,22 @@ public class RetentionTests
     public void SyncStatus_UsesHumanRelativeTime()
     {
         var now = new DateTimeOffset(2026, 10, 16, 15, 0, 0, TimeSpan.FromHours(8));
-        Assert.Equal("已连接 Obsidian", SyncStatusText.Format(SyncPhase.Idle, null, now));
+        Assert.Equal("已连接笔记库", SyncStatusText.Format(SyncPhase.Idle, null, now));
         Assert.Equal("写入未成功", SyncStatusText.Format(SyncPhase.Error, now, now));
         Assert.Equal(
-            "已写入 Obsidian · 刚刚",
+            "已写入笔记库 · 刚刚",
             SyncStatusText.Format(SyncPhase.Saved, now.AddSeconds(-10), now));
         Assert.Equal(
-            "已写入 Obsidian · 1 分钟前",
+            "已写入笔记库 · 1 分钟前",
             SyncStatusText.Format(SyncPhase.Saved, now.AddSeconds(-45), now));
         Assert.Equal(
-            "已写入 Obsidian · 2 分钟前",
+            "已写入笔记库 · 2 分钟前",
             SyncStatusText.Format(SyncPhase.Saved, now.AddMinutes(-2), now));
         Assert.Equal(
-            "已写入 Obsidian · 14:00",
+            "已写入笔记库 · 14:00",
             SyncStatusText.Format(SyncPhase.Saved, now.AddHours(-1), now));
         Assert.Equal(
-            "已写入 Obsidian · 10月15日 15:00",
+            "已写入笔记库 · 10月15日 15:00",
             SyncStatusText.Format(SyncPhase.Saved, now.AddDays(-1), now));
     }
 }

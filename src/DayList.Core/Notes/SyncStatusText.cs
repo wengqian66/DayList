@@ -15,9 +15,9 @@ public static class SyncStatusText
             return "写入未成功";
 
         if (phase == SyncPhase.Saved && savedAt is DateTimeOffset at)
-            return "已写入 Obsidian · " + Relative(at, now);
+            return "已写入笔记库 · " + Relative(at, now);
 
-        return "已连接 Obsidian";
+        return "已连接笔记库";
     }
 
     public static string Relative(DateTimeOffset at, DateTimeOffset now)
