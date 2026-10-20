@@ -152,6 +152,32 @@ public static class CategoryCatalog
     }
 
     /// <summary>
+    /// A trash click on one picker row. Accepted only for a deletable catalog
+    /// name. <paramref name="composeCategory"/> is echoed unchanged so the click
+    /// does not also switch the category used for the next task.
+    /// </summary>
+    public static bool TryAcceptPickerDelete(
+        string? label,
+        bool canDelete,
+        string? composeCategory,
+        out string categoryToDelete,
+        out string composeCategoryAfter)
+    {
+        composeCategoryAfter = composeCategory ?? "";
+        categoryToDelete = "";
+        if (!canDelete)
+            return false;
+
+        var name = DayTaskCategory.Normalize(label);
+        if (DayTaskCategory.IsUncategorized(name)
+            || string.Equals(name, DayTaskCategory.NewCategorySentinel, StringComparison.Ordinal))
+            return false;
+
+        categoryToDelete = name;
+        return true;
+    }
+
+    /// <summary>
     /// Drop a name from the catalog and remember that the user removed it.
     /// Does not describe a note edit.
     /// </summary>

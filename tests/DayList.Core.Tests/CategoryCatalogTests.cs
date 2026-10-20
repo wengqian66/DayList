@@ -231,4 +231,59 @@ public class CategoryCatalogTests
         Assert.Equal(5, entries.Count);
         Assert.Equal(entries.Count, entries.Select(entry => entry.Label).Distinct().Count());
     }
+
+    [Fact]
+    public void TryAcceptPickerDelete_KeepsTheComposedCategory_AndRejectsNonCatalogRows()
+    {
+        Assert.True(CategoryCatalog.TryAcceptPickerDelete(
+            "工作",
+            canDelete: true,
+            composeCategory: "生活",
+            out var delete,
+            out var kept));
+        Assert.Equal("工作", delete);
+        Assert.Equal("生活", kept);
+
+        Assert.True(CategoryCatalog.TryAcceptPickerDelete(
+            "  工作  ",
+            canDelete: true,
+            composeCategory: DayTaskCategory.UncategorizedKey,
+            out delete,
+            out kept));
+        Assert.Equal("工作", delete);
+        Assert.Equal(DayTaskCategory.UncategorizedKey, kept);
+
+        Assert.False(CategoryCatalog.TryAcceptPickerDelete(
+            "工作",
+            canDelete: false,
+            composeCategory: "生活",
+            out delete,
+            out kept));
+        Assert.Equal("", delete);
+        Assert.Equal("生活", kept);
+
+        Assert.False(CategoryCatalog.TryAcceptPickerDelete(
+            DayTaskCategory.UncategorizedLabel,
+            canDelete: true,
+            composeCategory: "生活",
+            out _,
+            out kept));
+        Assert.Equal("生活", kept);
+
+        Assert.False(CategoryCatalog.TryAcceptPickerDelete(
+            DayTaskCategory.NewCategorySentinel,
+            canDelete: true,
+            composeCategory: "生活",
+            out _,
+            out kept));
+        Assert.Equal("生活", kept);
+
+        Assert.False(CategoryCatalog.TryAcceptPickerDelete(
+            "  ",
+            canDelete: true,
+            composeCategory: null,
+            out _,
+            out kept));
+        Assert.Equal("", kept);
+    }
 }

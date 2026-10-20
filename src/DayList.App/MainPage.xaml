@@ -282,11 +282,10 @@
                     Margin="4,0,0,0"
                     Padding="0"
                     VerticalAlignment="Center"
+                    AllowFocusOnInteraction="False"
                     AutomationProperties.Name="删除分类 / Delete category"
+                    Click="CategoryPickerDelete_Click"
                     IsTabStop="False"
-                    PointerCanceled="CategoryPickerDelete_PointerCanceled"
-                    PointerPressed="CategoryPickerDelete_PointerPressed"
-                    PointerReleased="CategoryPickerDelete_PointerReleased"
                     Style="{StaticResource QuietButtonStyle}"
                     ToolTipService.ToolTip="删除分类 / Delete category"
                     Visibility="{x:Bind DeleteVisibility}">
