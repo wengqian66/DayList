@@ -102,7 +102,8 @@
                 Padding="4,3"
                 AllowDrop="True"
                 Background="{x:Bind RowBackground, Mode=OneWay}"
-                ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto,Auto"
+                ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto"
+                Tag="task-row"
                 ColumnSpacing="6"
                 MinHeight="36"
                 RowDefinitions="Auto,Auto"
@@ -110,7 +111,9 @@
                 DragLeave="TaskRow_DragLeave"
                 DragOver="TaskRow_DragOver"
                 Drop="TaskRow_Drop"
+                GotFocus="TaskRow_GotFocus"
                 Holding="TaskRow_Holding"
+                LostFocus="TaskRow_LostFocus"
                 PointerEntered="TaskRow_PointerEntered"
                 PointerExited="TaskRow_PointerExited"
                 RightTapped="TaskRow_RightTapped">
@@ -167,53 +170,80 @@
                     Content="{x:Bind CategoryLabel, Mode=OneWay}"
                     Style="{StaticResource CategoryChipStyle}"
                     ToolTipService.ToolTip="更改分类" />
-                <Button
-                    Grid.Column="5"
-                    MinWidth="44"
-                    Width="Auto"
-                    Padding="4,0"
-                    VerticalAlignment="Center"
-                    AutomationProperties.Name="设置提醒"
-                    Click="Remind_Click"
-                    Style="{StaticResource QuietButtonStyle}"
-                    ToolTipService.ToolTip="{x:Bind ReminderToolTip, Mode=OneWay}">
-                    <Grid>
-                        <FontIcon
-                            FontSize="14"
-                            Foreground="{StaticResource SoftMutedInkBrush}"
-                            Glyph="&#xEA8F;"
-                            Visibility="{x:Bind ReminderIconVisibility, Mode=OneWay}" />
+                <Grid Grid.Column="5" VerticalAlignment="Center">
+                    <!-- Quiet cues only. The buttons themselves stay in the hover stack. -->
+                    <StackPanel
+                        Orientation="Horizontal"
+                        Spacing="6"
+                        VerticalAlignment="Center"
+                        IsHitTestVisible="False"
+                        Tag="rowStatus">
                         <TextBlock
                             VerticalAlignment="Center"
                             FontSize="11"
-                            Foreground="{StaticResource SoftInkBrush}"
+                            Foreground="{StaticResource SoftMutedInkBrush}"
+                            Opacity="0.85"
                             Text="{x:Bind ReminderTime, Mode=OneWay}"
                             Visibility="{x:Bind ReminderTimeVisibility, Mode=OneWay}" />
-                    </Grid>
-                </Button>
-                <Button
-                    Grid.Column="6"
-                    VerticalAlignment="Center"
-                    AutomationProperties.Name="添加附件"
-                    Click="Attach_Click"
-                    Style="{StaticResource QuietButtonStyle}"
-                    ToolTipService.ToolTip="添加附件">
-                    <FontIcon FontSize="14" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE16C;" />
-                </Button>
-                <Button
-                    Grid.Column="7"
-                    VerticalAlignment="Center"
-                    AutomationProperties.Name="删除任务"
-                    Click="Delete_Click"
-                    Opacity="0.28"
-                    Style="{StaticResource QuietButtonStyle}"
-                    Tag="delete">
-                    <FontIcon FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE711;" />
-                </Button>
+                        <FontIcon
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource SoftMutedInkBrush}"
+                            Glyph="&#xE16C;"
+                            Opacity="0.55"
+                            Visibility="{x:Bind AttachmentsVisibility, Mode=OneWay}" />
+                    </StackPanel>
+                    <StackPanel
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        PointerEntered="TaskRow_PointerEntered"
+                        PointerExited="TaskRow_PointerExited"
+                        Tag="rowHoverActions"
+                        Visibility="Collapsed">
+                        <Button
+                            MinWidth="44"
+                            Width="Auto"
+                            Padding="4,0"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="设置提醒"
+                            Click="Remind_Click"
+                            Style="{StaticResource QuietButtonStyle}"
+                            ToolTipService.ToolTip="{x:Bind ReminderToolTip, Mode=OneWay}">
+                            <Grid>
+                                <FontIcon
+                                    FontSize="14"
+                                    Foreground="{StaticResource SoftMutedInkBrush}"
+                                    Glyph="&#xEA8F;"
+                                    Visibility="{x:Bind ReminderIconVisibility, Mode=OneWay}" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="11"
+                                    Foreground="{StaticResource SoftInkBrush}"
+                                    Text="{x:Bind ReminderTime, Mode=OneWay}"
+                                    Visibility="{x:Bind ReminderTimeVisibility, Mode=OneWay}" />
+                            </Grid>
+                        </Button>
+                        <Button
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="添加附件"
+                            Click="Attach_Click"
+                            Style="{StaticResource QuietButtonStyle}"
+                            ToolTipService.ToolTip="添加附件">
+                            <FontIcon FontSize="14" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE16C;" />
+                        </Button>
+                        <Button
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="删除任务"
+                            Click="Delete_Click"
+                            Style="{StaticResource QuietButtonStyle}">
+                            <FontIcon FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Glyph="&#xE711;" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
                 <ItemsControl
                     Grid.Row="1"
                     Grid.Column="3"
-                    Grid.ColumnSpan="5"
+                    Grid.ColumnSpan="3"
                     HorizontalAlignment="Stretch"
                     ItemTemplate="{StaticResource AttachmentChipTemplate}"
                     ItemsSource="{x:Bind Attachments, Mode=OneWay}"
@@ -947,7 +977,7 @@
                             VerticalAlignment="Center"
                             FontSize="12"
                             Foreground="{StaticResource SoftMutedInkBrush}"
-                            Text="已连接 Obsidian"
+                            Text="已连接笔记库"
                             TextWrapping="NoWrap" />
                     </StackPanel>
                 </Border>
