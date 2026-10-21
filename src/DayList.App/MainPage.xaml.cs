@@ -35,6 +35,8 @@ public sealed partial class MainPage : Page
     private AppSettings _settings = new();
     private DateOnly _date = DateOnly.FromDateTime(DateTime.Now);
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _watchTimer;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _dayWatchTimer;
+    private DateOnly _chromeToday;
     private FileSystemWatcher? _watcher;
     private string? _watchedPath;
     private string? _knownHash;
@@ -97,6 +99,9 @@ public sealed partial class MainPage : Page
 
     public MainPage()
     {
+        // Same snapshot as _date so the first foreground/timer check does not
+        // treat startup as a calendar-day change.
+        _chromeToday = _date;
         InitializeComponent();
         CategoryCards.ItemsSource = _cards;
         OverdueList.ItemsSource = _overdue;
@@ -131,7 +136,14 @@ public sealed partial class MainPage : Page
 
     public AppSettings CurrentSettings => _settings.Copy();
 
-    public void AttachHost(MainWindow host) => _host = host;
+    public void AttachHost(MainWindow host)
+    {
+        if (ReferenceEquals(_host, host))
+            return;
+        DetachHostChromeWatch();
+        _host = host;
+        AttachHostChromeWatch();
+    }
 
     public void FocusAddBox()
     {
@@ -222,12 +234,24 @@ public sealed partial class MainPage : Page
         _focusTimer.IsRepeating = true;
         _focusTimer.Tick += (_, _) => OnFocusTick();
         RenderFocus();
+
+        // Date chrome is otherwise only refreshed from load / SetDate. While
+        // the window stays open past midnight, compare the local calendar day
+        // and reveal「今天」without moving _date. One second is enough; the
+        // tick returns immediately when the day has not changed.
+        _dayWatchTimer = DispatcherQueue.CreateTimer();
+        _dayWatchTimer.Interval = TimeSpan.FromSeconds(1);
+        _dayWatchTimer.IsRepeating = true;
+        _dayWatchTimer.Tick += (_, _) => RefreshDateChromeIfDayChanged();
+        _dayWatchTimer.Start();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _closed = true;
         _pageCts.Cancel();
+        _dayWatchTimer?.Stop();
+        DetachHostChromeWatch();
         _reminderTimer?.Stop();
         _focusTimer?.Stop();
         FocusPopup.Dismiss();
@@ -1171,9 +1195,54 @@ public sealed partial class MainPage : Page
         ShowStatus("已转为灵感。", InfoBarSeverity.Success);
     }
 
+    private void AttachHostChromeWatch()
+    {
+        if (_host is null)
+            return;
+        _host.Activated -= OnHostActivated;
+        _host.Activated += OnHostActivated;
+        _host.VisibilityChanged -= OnHostVisibilityChanged;
+        _host.VisibilityChanged += OnHostVisibilityChanged;
+    }
+
+    private void DetachHostChromeWatch()
+    {
+        if (_host is null)
+            return;
+        _host.Activated -= OnHostActivated;
+        _host.VisibilityChanged -= OnHostVisibilityChanged;
+    }
+
+    private void OnHostActivated(object sender, WindowActivatedEventArgs args)
+    {
+        // Alt-tab and unlock come back through Activated. A wake that does not
+        // activate the window again is covered by the day-watch timer.
+        if (args.WindowActivationState == WindowActivationState.Deactivated)
+            return;
+        RefreshDateChromeIfDayChanged();
+    }
+
+    private void OnHostVisibilityChanged(object sender, WindowVisibilityChangedEventArgs args)
+    {
+        if (!args.Visible)
+            return;
+        RefreshDateChromeIfDayChanged();
+    }
+
+    private void RefreshDateChromeIfDayChanged()
+    {
+        if (_closed)
+            return;
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        if (today == _chromeToday)
+            return;
+        UpdateDateChrome();
+    }
+
     private void UpdateDateChrome()
     {
         var today = DateOnly.FromDateTime(DateTime.Now);
+        _chromeToday = today;
         var dt = _date.ToDateTime(TimeOnly.MinValue);
         DateLabel.Text = dt.ToString("M月d日 ddd", DisplayCulture);
         SideDateText.Text = dt.ToString("M月d日 ddd", DisplayCulture);
