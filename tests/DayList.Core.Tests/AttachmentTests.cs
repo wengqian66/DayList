@@ -329,4 +329,209 @@ public class AttachmentTests
         Assert.Empty(batch.Added);
         Assert.Equal("还没有选择 Obsidian 库。", batch.Error);
     }
+
+    [Fact]
+    public void BringForward_CopiesAttachmentsIntoTodayAndRewritesLinks()
+    {
+        using var vault = new TempVault();
+        var settings = vault.Settings();
+        var sourceDay = new DateOnly(2026, 10, 15);
+        var today = new DateOnly(2026, 10, 16);
+        var photo = WithToken(
+            AttachmentVault.Import(vault.Root, sourceDay, WriteIncoming(vault, "photo.png", new byte[] { 1, 2, 3, 4 })),
+            "![[DayList-attachments/2026-10-15/photo.png|120]]");
+        var report = WithToken(
+            AttachmentVault.Import(vault.Root, sourceDay, WriteIncoming(vault, "周报.docx", "hello"u8.ToArray())),
+            "[[DayList-attachments/2026-10-15/周报.docx|周报]]",
+            "周报");
+        var cover = WithToken(
+            AttachmentVault.Import(vault.Root, sourceDay, WriteIncoming(vault, "cover a.webp", new byte[] { 9, 8 })),
+            "![封面](../DayList-attachments/2026-10-15/cover%20a.webp)",
+            "封面");
+
+        DailyNoteStore.Write(settings, sourceDay, new[]
+        {
+            new DayTask
+            {
+                Text = "买牛奶 [[某笔记]]",
+                Category = "生活",
+                Indent = "  ",
+                Bullet = '*',
+                Attachments = new List<TaskAttachment> { photo, report, cover }
+            },
+            new DayTask
+            {
+                Text = "已完成",
+                IsDone = true,
+                Attachments = new List<TaskAttachment> { photo.Copy() }
+            }
+        });
+
+        var yesterdayPath = VaultLayout.Daily(settings, sourceDay).FullPath;
+        var before = File.ReadAllBytes(yesterdayPath);
+        var item = Assert.Single(OverdueScan.CollectOpenBefore(settings, today));
+        Assert.Equal("买牛奶 [[某笔记]]", item.Text);
+        Assert.Equal("生活", item.Category);
+        Assert.Equal("  ", item.Indent);
+        Assert.Equal('*', item.Bullet);
+        Assert.Equal(3, item.Attachments.Count);
+        Assert.Equal("DayList-attachments/2026-10-15/photo.png", item.Attachments[0].RelativePath);
+        Assert.True(item.Attachments[0].IsImage);
+        Assert.Equal("周报", item.Attachments[1].DisplayName);
+        Assert.False(item.Attachments[1].IsImage);
+        Assert.Equal("封面", item.Attachments[2].DisplayName);
+
+        var copied = AttachmentVault.CopyIntoDay(vault.Root, today, item.Attachments);
+
+        Assert.Equal(before, File.ReadAllBytes(yesterdayPath));
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, File.ReadAllBytes(DayFile(vault, sourceDay, "photo.png")));
+        Assert.Equal("hello", File.ReadAllText(DayFile(vault, sourceDay, "周报.docx")));
+        Assert.Contains("2026-10-15/photo.png", File.ReadAllText(yesterdayPath));
+        Assert.DoesNotContain("2026-10-16", File.ReadAllText(yesterdayPath));
+
+        Assert.Equal("DayList-attachments/2026-10-16/photo.png", copied[0].RelativePath);
+        Assert.True(copied[0].IsImage);
+        Assert.Equal("photo.png", copied[0].DisplayName);
+        Assert.Equal("![[DayList-attachments/2026-10-16/photo.png|120]]", copied[0].OriginalToken);
+        Assert.Equal("DayList-attachments/2026-10-16/周报.docx", copied[1].RelativePath);
+        Assert.False(copied[1].IsImage);
+        Assert.Equal("周报", copied[1].DisplayName);
+        Assert.Equal("[[DayList-attachments/2026-10-16/周报.docx|周报]]", copied[1].OriginalToken);
+        Assert.Equal("DayList-attachments/2026-10-16/cover a.webp", copied[2].RelativePath);
+        Assert.True(copied[2].IsImage);
+        Assert.Equal("封面", copied[2].DisplayName);
+        Assert.Equal("![封面](../DayList-attachments/2026-10-16/cover%20a.webp)", copied[2].OriginalToken);
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, File.ReadAllBytes(DayFile(vault, today, "photo.png")));
+        Assert.Equal("hello", File.ReadAllText(DayFile(vault, today, "周报.docx")));
+        Assert.Equal(new byte[] { 9, 8 }, File.ReadAllBytes(DayFile(vault, today, "cover a.webp")));
+
+        DailyNoteStore.Write(settings, today, new[]
+        {
+            new DayTask
+            {
+                Text = item.Text,
+                Category = item.Category,
+                Indent = item.Indent,
+                Bullet = item.Bullet,
+                DoneMark = item.DoneMark,
+                Attachments = copied.ToList()
+            }
+        });
+        var todayNote = File.ReadAllText(VaultLayout.Daily(settings, today).FullPath);
+        Assert.Contains("![[DayList-attachments/2026-10-16/photo.png|120]]", todayNote);
+        Assert.Contains("[[DayList-attachments/2026-10-16/周报.docx|周报]]", todayNote);
+        Assert.Contains("![封面](../DayList-attachments/2026-10-16/cover%20a.webp)", todayNote);
+        Assert.DoesNotContain("2026-10-15", todayNote);
+
+        var again = Assert.Single(DailyNoteStore.Read(settings, today).Tasks);
+        Assert.Equal("买牛奶 [[某笔记]]", again.Text);
+        Assert.Equal("生活", again.Category);
+        Assert.Equal(3, again.Attachments.Count);
+        Assert.Equal(copied[0].RelativePath, again.Attachments[0].RelativePath);
+        Assert.True(again.Attachments[0].IsImage);
+        Assert.Equal("周报", again.Attachments[1].DisplayName);
+        Assert.Equal(copied[2].RelativePath, again.Attachments[2].RelativePath);
+        Assert.True(File.Exists(VaultLayout.Combine(vault.Root, again.Attachments[0].RelativePath)));
+        Assert.True(File.Exists(VaultLayout.Combine(vault.Root, again.Attachments[2].RelativePath)));
+    }
+
+    [Fact]
+    public void BringForward_KeepsAnImageOnlyTaskAndMatchesItAfterTheCopy()
+    {
+        using var vault = new TempVault();
+        var settings = vault.Settings();
+        var sourceDay = new DateOnly(2026, 10, 15);
+        var today = new DateOnly(2026, 10, 16);
+        var image = AttachmentVault.Import(vault.Root, sourceDay, WriteIncoming(vault, "only.png", new byte[] { 7 }));
+        DailyNoteStore.Write(settings, sourceDay, new[]
+        {
+            new DayTask { Attachments = new List<TaskAttachment> { image } }
+        });
+
+        var item = Assert.Single(OverdueScan.CollectOpenBefore(settings, today));
+        Assert.Equal("", item.Text);
+        Assert.Equal("only.png", OverdueIdentity.Label(item));
+        var copied = Assert.Single(AttachmentVault.CopyIntoDay(vault.Root, today, item.Attachments));
+        Assert.Equal("DayList-attachments/2026-10-16/only.png", copied.RelativePath);
+        Assert.True(copied.IsImage);
+        Assert.Equal("![[DayList-attachments/2026-10-16/only.png]]", copied.OriginalToken);
+        Assert.Equal(new byte[] { 7 }, File.ReadAllBytes(DayFile(vault, sourceDay, "only.png")));
+        Assert.Equal(new byte[] { 7 }, File.ReadAllBytes(DayFile(vault, today, "only.png")));
+        Assert.Equal(
+            OverdueIdentity.AttachmentKey(item.Attachments),
+            OverdueIdentity.AttachmentKey(new[] { copied }));
+
+        var onToday = new TodayTaskRef("", item.Category, OverdueIdentity.AttachmentKey(new[] { copied }));
+        Assert.True(CarryOverOffer.AlreadyOnToday(item, new[] { onToday }));
+        Assert.Equal("", Assert.Single(CarryOverOffer.Pending(
+            new[] { item },
+            Array.Empty<TodayTaskRef>(),
+            new CarryOverMemory(),
+            today)).Text);
+        Assert.Empty(CarryOverOffer.Pending(new[] { item }, new[] { onToday }, new CarryOverMemory(), today));
+    }
+
+    [Fact]
+    public void CopyIntoDay_ReusesIdenticalBytesAndDoesNotClobberADifferentFile()
+    {
+        using var vault = new TempVault();
+        var sourceDay = new DateOnly(2026, 10, 15);
+        var today = new DateOnly(2026, 10, 16);
+        var incoming = WriteIncoming(vault, "photo.png", new byte[] { 1, 2, 3 });
+        var yesterday = AttachmentVault.Import(vault.Root, sourceDay, incoming);
+        var sameToday = AttachmentVault.Import(vault.Root, today, incoming);
+        var reused = Assert.Single(AttachmentVault.CopyIntoDay(vault.Root, today, new[] { yesterday }));
+        Assert.Equal(sameToday.RelativePath, reused.RelativePath);
+        Assert.Equal("![[DayList-attachments/2026-10-16/photo.png]]", reused.OriginalToken);
+        Assert.Single(Directory.EnumerateFiles(Path.Combine(vault.Root, "DayList-attachments", "2026-10-16")));
+
+        File.WriteAllBytes(DayFile(vault, sourceDay, "photo.png"), new byte[] { 9 });
+        var suffixed = Assert.Single(AttachmentVault.CopyIntoDay(vault.Root, today, new[] { yesterday }));
+        Assert.Equal("DayList-attachments/2026-10-16/photo-2.png", suffixed.RelativePath);
+        Assert.Equal("![[DayList-attachments/2026-10-16/photo-2.png]]", suffixed.OriginalToken);
+        Assert.Equal(new byte[] { 1, 2, 3 }, File.ReadAllBytes(DayFile(vault, today, "photo.png")));
+        Assert.Equal(new byte[] { 9 }, File.ReadAllBytes(DayFile(vault, today, "photo-2.png")));
+        Assert.Equal(new byte[] { 9 }, File.ReadAllBytes(DayFile(vault, sourceDay, "photo.png")));
+    }
+
+    [Fact]
+    public void CopyIntoDay_KeepsAMissingFileAndIgnoresAnEmptyList()
+    {
+        using var vault = new TempVault();
+        var today = new DateOnly(2026, 10, 16);
+        Assert.Empty(AttachmentVault.CopyIntoDay(vault.Root, today, null));
+        Assert.Empty(AttachmentVault.CopyIntoDay(vault.Root, today, Array.Empty<TaskAttachment>()));
+
+        var missing = new TaskAttachment
+        {
+            RelativePath = "DayList-attachments/2026-10-15/gone.png",
+            DisplayName = "gone.png",
+            IsImage = true,
+            OriginalToken = "![[DayList-attachments/2026-10-15/gone.png]]"
+        };
+        var kept = Assert.Single(AttachmentVault.CopyIntoDay(vault.Root, today, new[] { missing }));
+        Assert.Equal(missing.RelativePath, kept.RelativePath);
+        Assert.Equal(missing.OriginalToken, kept.OriginalToken);
+        Assert.False(File.Exists(DayFile(vault, today, "gone.png")));
+    }
+
+    private static TaskAttachment WithToken(TaskAttachment source, string token, string? display = null) => new()
+    {
+        RelativePath = source.RelativePath,
+        DisplayName = display ?? source.DisplayName,
+        IsImage = source.IsImage,
+        OriginalToken = token
+    };
+
+    private static string WriteIncoming(TempVault vault, string name, byte[] bytes)
+    {
+        var dir = Path.Combine(vault.Root, "incoming");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, name);
+        File.WriteAllBytes(path, bytes);
+        return path;
+    }
+
+    private static string DayFile(TempVault vault, DateOnly day, string name) =>
+        Path.Combine(vault.Root, "DayList-attachments", day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), name);
 }

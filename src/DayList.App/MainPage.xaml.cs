@@ -438,7 +438,10 @@ public sealed partial class MainPage : Page
             open = Array.Empty<OverdueTaskItem>();
         }
 
-        var todayTasks = _rows.Select(row => new TodayTaskRef(row.Text, row.Category)).ToList();
+        var todayTasks = _rows.Select(row => new TodayTaskRef(
+            row.Text,
+            row.Category,
+            OverdueIdentity.AttachmentKey(row.Attachments.Select(chip => chip.ToAttachment())))).ToList();
         var absorbed = open.Where(item => CarryOverOffer.AlreadyOnToday(item, todayTasks)).ToList();
         // Only remember tasks that are actually in the note. A failed write must not
         // dismiss the banner across the next launch.
@@ -2505,20 +2508,29 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        var item = overdue.Item;
+        var itemText = (item.Text ?? "").Trim();
         var exists = _rows.Any(row =>
-            string.Equals(row.Text.Trim(), overdue.Text, StringComparison.Ordinal)
-            && DayTaskCategory.Normalize(row.Category) == DayTaskCategory.Normalize(overdue.Item.Category));
+            string.Equals(row.Text.Trim(), itemText, StringComparison.Ordinal)
+            && DayTaskCategory.Normalize(row.Category) == DayTaskCategory.Normalize(item.Category)
+            && (itemText.Length > 0
+                || string.Equals(
+                    OverdueIdentity.AttachmentKey(row.Attachments.Select(chip => chip.ToAttachment())),
+                    OverdueIdentity.AttachmentKey(item.Attachments),
+                    StringComparison.OrdinalIgnoreCase)));
         if (!exists)
         {
-            InsertRow(new TaskRow
+            var attachments = AttachmentVault.CopyIntoDay(_settings.VaultPath, _date, item.Attachments);
+            InsertRow(TaskRow.From(new DayTask
             {
-                Text = overdue.Item.Text,
-                Category = overdue.Item.Category,
-                Indent = overdue.Item.Indent,
-                Bullet = overdue.Item.Bullet,
-                DoneMark = overdue.Item.DoneMark,
-                IsDone = false
-            });
+                Text = item.Text,
+                Category = item.Category,
+                Indent = item.Indent,
+                Bullet = item.Bullet,
+                DoneMark = item.DoneMark,
+                IsDone = false,
+                Attachments = attachments.ToList()
+            }, _settings.VaultPath));
         }
 
         if (!persist)

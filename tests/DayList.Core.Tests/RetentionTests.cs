@@ -194,6 +194,76 @@ public class RetentionTests
     }
 
     [Fact]
+    public void StillUnfinished_TextMatchIgnoresAttachments_AndImageOnlyUsesFileNames()
+    {
+        var source = new DateOnly(2026, 10, 15);
+        var finishedOn = new DateOnly(2026, 10, 16);
+        var withFile = Open("买菜", "生活", source) with
+        {
+            Attachments = new[]
+            {
+                new TaskAttachment
+                {
+                    RelativePath = "DayList-attachments/2026-10-15/a.png",
+                    DisplayName = "a.png",
+                    IsImage = true
+                }
+            }
+        };
+        Assert.Empty(CarryOverOffer.StillUnfinished(
+            new[] { withFile },
+            new[] { new FinishedTaskRef(finishedOn, "买菜", "生活") }));
+
+        var image = ImageOnly("only.png");
+        var other = ImageOnly("other.png");
+        var sameKey = OverdueIdentity.AttachmentKey(image.Attachments);
+        Assert.Empty(CarryOverOffer.StillUnfinished(
+            new[] { image },
+            new[] { new FinishedTaskRef(finishedOn, "", "", sameKey) }));
+        Assert.Single(CarryOverOffer.StillUnfinished(
+            new[] { image },
+            new[] { new FinishedTaskRef(finishedOn, "", "", OverdueIdentity.AttachmentKey(other.Attachments)) }));
+        Assert.Single(CarryOverOffer.StillUnfinished(
+            new[] { image },
+            new[] { new FinishedTaskRef(finishedOn, "only.png", "") }));
+
+        var otherCategory = ImageOnly("only.png", "工作");
+        Assert.Single(CarryOverOffer.StillUnfinished(
+            new[] { otherCategory },
+            new[] { new FinishedTaskRef(finishedOn, "", "", sameKey) }));
+
+        Assert.True(CarryOverOffer.AlreadyOnToday(
+            withFile,
+            new[] { new TodayTaskRef("买菜", "生活") }));
+        Assert.True(CarryOverOffer.AlreadyOnToday(
+            image,
+            new[] { new TodayTaskRef("", "", sameKey) }));
+        Assert.False(CarryOverOffer.AlreadyOnToday(
+            image,
+            new[] { new TodayTaskRef("only.png", "") }));
+
+        var pending = CarryOverOffer.Pending(new[] { image }, Array.Empty<TodayTaskRef>(), new CarryOverMemory(), Today);
+        Assert.Equal("only.png", OverdueIdentity.Label(Assert.Single(pending)));
+        var dismissed = CarryOverOffer.MarkHandled(new CarryOverMemory(), Today, pending);
+        Assert.Empty(CarryOverOffer.Pending(pending, Array.Empty<TodayTaskRef>(), dismissed, Today));
+    }
+
+    private static OverdueTaskItem ImageOnly(string file, string category = "") =>
+        new(Yesterday, "", category, "", '-', 'x')
+        {
+            Attachments = new[]
+            {
+                new TaskAttachment
+                {
+                    RelativePath = "DayList-attachments/2026-10-15/" + file,
+                    DisplayName = file,
+                    IsImage = true,
+                    OriginalToken = "![[DayList-attachments/2026-10-15/" + file + "]]"
+                }
+            }
+        };
+
+    [Fact]
     public void BannerTitle_SaysYesterdayOnlyWhenEveryItemIsThePreviousDay()
     {
         var today = new DateOnly(2026, 10, 20);
