@@ -131,6 +131,142 @@ public static class AttachmentVault
         return batch;
     }
 
+    /// <summary>
+    /// Copies managed attachment files into <paramref name="date"/>'s folder and
+    /// returns attachments whose path and wiki token point at that day.
+    /// The previous day's files stay in place; that note still links them.
+    /// A file that cannot be copied is returned unchanged.
+    /// </summary>
+    public static IReadOnlyList<TaskAttachment> CopyIntoDay(
+        string vaultPath,
+        DateOnly date,
+        IEnumerable<TaskAttachment>? attachments)
+    {
+        if (attachments is null)
+            return Array.Empty<TaskAttachment>();
+
+        var source = attachments as IReadOnlyCollection<TaskAttachment> ?? attachments.ToList();
+        if (source.Count == 0)
+            return Array.Empty<TaskAttachment>();
+
+        if (string.IsNullOrWhiteSpace(vaultPath) || !Directory.Exists(vaultPath))
+        {
+            var kept = new List<TaskAttachment>(source.Count);
+            foreach (var item in source)
+            {
+                if (item is not null)
+                    kept.Add(item.Copy());
+            }
+
+            return kept;
+        }
+
+        var copied = new List<TaskAttachment>(source.Count);
+        foreach (var attachment in source)
+        {
+            if (attachment is null || string.IsNullOrWhiteSpace(attachment.RelativePath))
+                continue;
+            copied.Add(CopyOneIntoDay(vaultPath, date, attachment));
+        }
+
+        return copied;
+    }
+
+    private static TaskAttachment CopyOneIntoDay(string vaultPath, DateOnly date, TaskAttachment source)
+    {
+        var relative = (source.RelativePath ?? "").Replace('\\', '/').Trim('/');
+        string sourceFull;
+        try
+        {
+            sourceFull = VaultLayout.Combine(vaultPath, relative);
+        }
+        catch (InvalidOperationException)
+        {
+            return source.Copy();
+        }
+
+        if (!File.Exists(sourceFull))
+            return source.Copy();
+
+        TaskAttachment imported;
+        try
+        {
+            imported = Import(vaultPath, date, sourceFull);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return source.Copy();
+        }
+
+        return RewriteForDay(imported, source);
+    }
+
+    private static TaskAttachment RewriteForDay(TaskAttachment imported, TaskAttachment source)
+    {
+        var relative = imported.RelativePath.Replace('\\', '/');
+        var display = PreservedDisplayName(source, relative);
+        var token = RewriteToken(source, relative) ?? CanonicalToken(relative, display, imported.IsImage);
+        return new TaskAttachment
+        {
+            RelativePath = relative,
+            DisplayName = display,
+            IsImage = imported.IsImage,
+            OriginalToken = token
+        };
+    }
+
+    private static string PreservedDisplayName(TaskAttachment source, string newRelative)
+    {
+        var newFile = Path.GetFileName(newRelative);
+        var oldFile = Path.GetFileName((source.RelativePath ?? "").Replace('\\', '/'));
+        var alias = (source.DisplayName ?? "").Trim();
+        if (alias.Length == 0
+            || alias.All(char.IsDigit)
+            || string.Equals(alias, oldFile, StringComparison.OrdinalIgnoreCase))
+        {
+            return newFile;
+        }
+
+        return alias;
+    }
+
+    private static string? RewriteToken(TaskAttachment source, string newRelative)
+    {
+        var token = source.OriginalToken;
+        if (string.IsNullOrEmpty(token))
+            return null;
+
+        var oldRelative = (source.RelativePath ?? "").Replace('\\', '/').Trim('/');
+        if (oldRelative.Length == 0)
+            return null;
+
+        if (token.Contains(oldRelative, StringComparison.Ordinal))
+            return token.Replace(oldRelative, newRelative, StringComparison.Ordinal);
+
+        var encodedOld = EncodePath(oldRelative);
+        if (!string.Equals(encodedOld, oldRelative, StringComparison.Ordinal)
+            && token.Contains(encodedOld, StringComparison.Ordinal))
+        {
+            return token.Replace(encodedOld, EncodePath(newRelative), StringComparison.Ordinal);
+        }
+
+        return null;
+    }
+
+    private static string EncodePath(string relative) =>
+        string.Join("/", relative.Split('/').Select(Uri.EscapeDataString));
+
+    private static string CanonicalToken(string relative, string display, bool isImage)
+    {
+        var draft = new TaskAttachment
+        {
+            RelativePath = relative,
+            DisplayName = display,
+            IsImage = isImage
+        };
+        return draft.ToCanonicalToken();
+    }
+
     private static string NormalizeRelative(string? path) =>
         (path ?? "").Replace('\\', '/').Trim('/');
 

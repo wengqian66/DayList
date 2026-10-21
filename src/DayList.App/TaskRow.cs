@@ -469,7 +469,7 @@ public sealed class OverdueRow
     {
         Item = item;
         DateText = item.Date.ToString("M/d");
-        Text = item.Text;
+        Text = OverdueIdentity.Label(item);
         CategoryLabel = DayTaskCategory.Display(item.Category);
     }
 

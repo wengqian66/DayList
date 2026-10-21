@@ -20,14 +20,14 @@ Windows 上的每日待办。清单不另存数据库，只读写 Obsidian 库�
 
 ## 下载安装（推荐）
 
-从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.2.11。
+从 [GitHub Releases](https://github.com/wengqian66/DayList/releases/latest) 下载最新的 **DayList-Setup** 安装包，双击安装即可。源码版本是 1.2.12。
 
 - 自带 .NET 8 与 Windows App SDK，**无需再装 SDK 或运行时**
 - 默认装到 `Program Files\DayList`，可选桌面快捷方式
 - 首次打开后在设置里指定你的 **Obsidian 库文件夹**
 - 卸载后本机设置仍保留在 `%AppData%\DayList`（含 API Key，不会进安装包或仓库）
 
-当前版本：1.2.11。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
+当前版本：1.2.12。已发布的安装包见 [Releases](https://github.com/wengqian66/DayList/releases/latest)。Git 标签 v1.1.5 仍是已撤回的无边框窗口改动，主线没有把它带回来。
 
 ## 环境
 
@@ -110,10 +110,10 @@ API Key 以明文保存在本机的设置文件里，不会写进笔记。
 本机需安装 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) 与 [Inno Setup 6](https://jrsoftware.org/isinfo.php)。在仓库根目录：
 
 ```powershell
-  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.11
+  powershell -ExecutionPolicy Bypass -File scripts\publish-installer.ps1 -Version 1.2.12
 ```
 
-完成后得到 `dist\DayList-Setup-1.2.11.exe`（自包含 win-x64）。
+完成后得到 `dist\DayList-Setup-1.2.12.exe`（自包含 win-x64）。
 
 ## 测试
 
