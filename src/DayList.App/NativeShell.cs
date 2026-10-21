@@ -6,6 +6,7 @@ internal static class NativeShell
 {
     public const int WmHotkey = 0x0312;
     public const int HotkeyId = 0xD11F;
+    public const int QuickAddHotkeyId = 0xD120;
     public const uint NimAdd = 0x00000000;
     public const uint NimModify = 0x00000001;
     public const uint NimDelete = 0x00000002;

@@ -10,22 +10,25 @@ internal sealed class TrayHost : IDisposable
     private readonly Window _window;
     private readonly Action _onShow;
     private readonly Action _onQuickAdd;
+    private readonly Action _onFocusAdd;
     private readonly Action _onExit;
     private readonly NativeShell.WndProc _wndProc;
     private IntPtr _messageHwnd;
     private IntPtr _iconHandle;
     private bool _trayAdded;
     private bool _hotkeyRegistered;
+    private bool _quickAddHotkeyRegistered;
     private bool _ownedIcon;
     private bool _disposed;
     private GCHandle _procHandle;
     private string _className = "";
 
-    public TrayHost(Window window, Action onShow, Action onQuickAdd, Action onExit)
+    public TrayHost(Window window, Action onShow, Action onQuickAdd, Action onFocusAdd, Action onExit)
     {
         _window = window;
         _onShow = onShow;
         _onQuickAdd = onQuickAdd;
+        _onFocusAdd = onFocusAdd;
         _onExit = onExit;
         _wndProc = WndProcImpl;
         _procHandle = GCHandle.Alloc(_wndProc);
@@ -39,7 +42,11 @@ internal sealed class TrayHost : IDisposable
 
     public bool IsHotkeyRegistered => _hotkeyRegistered;
 
+    public bool IsQuickAddHotkeyRegistered => _quickAddHotkeyRegistered;
+
     public string? LastHotkeyError { get; private set; }
+
+    public string? LastQuickAddHotkeyError { get; private set; }
 
     public IntPtr WindowHandle => WindowNative.GetWindowHandle(_window);
 
@@ -55,7 +62,8 @@ internal sealed class TrayHost : IDisposable
         }
 
         // Prefer MOD_NOREPEAT; fall back without it on older hosts.
-        if (TryRegister(hotkey, withNoRepeat: true) || TryRegister(hotkey, withNoRepeat: false))
+        if (TryRegister(NativeShell.HotkeyId, hotkey, withNoRepeat: true)
+            || TryRegister(NativeShell.HotkeyId, hotkey, withNoRepeat: false))
         {
             _hotkeyRegistered = true;
             return true;
@@ -68,7 +76,7 @@ internal sealed class TrayHost : IDisposable
         return false;
     }
 
-    private bool TryRegister(HotkeySpec hotkey, bool withNoRepeat)
+    private bool TryRegister(int id, HotkeySpec hotkey, bool withNoRepeat)
     {
         uint mods = 0;
         if (hotkey.Alt)
@@ -82,7 +90,7 @@ internal sealed class TrayHost : IDisposable
 
         return NativeShell.RegisterHotKey(
             _messageHwnd,
-            NativeShell.HotkeyId,
+            id,
             mods,
             (uint)hotkey.VirtualKey);
     }
@@ -93,6 +101,39 @@ internal sealed class TrayHost : IDisposable
             return;
         NativeShell.UnregisterHotKey(_messageHwnd, NativeShell.HotkeyId);
         _hotkeyRegistered = false;
+    }
+
+    public bool RegisterQuickAddHotkey(HotkeySpec hotkey)
+    {
+        UnregisterQuickAddHotkey();
+        LastQuickAddHotkeyError = null;
+
+        if (_messageHwnd == IntPtr.Zero)
+        {
+            LastQuickAddHotkeyError = "托盘消息窗口未创建，无法注册热键。";
+            return false;
+        }
+
+        if (TryRegister(NativeShell.QuickAddHotkeyId, hotkey, withNoRepeat: true)
+            || TryRegister(NativeShell.QuickAddHotkeyId, hotkey, withNoRepeat: false))
+        {
+            _quickAddHotkeyRegistered = true;
+            return true;
+        }
+
+        var err = NativeShell.GetLastError();
+        LastQuickAddHotkeyError = err == 1409
+            ? $"快速添加热键 {hotkey.ToDisplay()} 已被其他程序占用，请在设置里换一组。"
+            : $"快速添加热键 {hotkey.ToDisplay()} 注册失败（错误码 {err}）。";
+        return false;
+    }
+
+    public void UnregisterQuickAddHotkey()
+    {
+        if (!_quickAddHotkeyRegistered || _messageHwnd == IntPtr.Zero)
+            return;
+        NativeShell.UnregisterHotKey(_messageHwnd, NativeShell.QuickAddHotkeyId);
+        _quickAddHotkeyRegistered = false;
     }
 
     public void EnsureTrayIcon()
@@ -108,6 +149,7 @@ internal sealed class TrayHost : IDisposable
             return;
         _disposed = true;
         UnregisterHotkey();
+        UnregisterQuickAddHotkey();
         RemoveTrayIcon();
         if (_messageHwnd != IntPtr.Zero)
         {
@@ -255,11 +297,22 @@ internal sealed class TrayHost : IDisposable
 
     private IntPtr WndProcImpl(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)
     {
-        if (msg == NativeShell.WmHotkey && wParam.ToInt32() == NativeShell.HotkeyId)
+        if (msg == NativeShell.WmHotkey)
         {
-            Dispatch(_onShow);
-            Dispatch(_onQuickAdd);
-            return IntPtr.Zero;
+            var hotkeyId = wParam.ToInt32();
+            if (hotkeyId == NativeShell.HotkeyId)
+            {
+                // Main hotkey: show the window and focus the add box.
+                Dispatch(_onFocusAdd);
+                return IntPtr.Zero;
+            }
+
+            if (hotkeyId == NativeShell.QuickAddHotkeyId)
+            {
+                // Quick-add hotkey: open the capture bar without the main window.
+                Dispatch(_onQuickAdd);
+                return IntPtr.Zero;
+            }
         }
 
         if (msg == NativeShell.WmAppTray)
@@ -286,7 +339,6 @@ internal sealed class TrayHost : IDisposable
                     Dispatch(_onShow);
                     break;
                 case NativeShell.CmdQuickAdd:
-                    Dispatch(_onShow);
                     Dispatch(_onQuickAdd);
                     break;
                 case NativeShell.CmdExit:

@@ -18,6 +18,8 @@ public sealed class AppSettings
 
     public bool ReminderToastOnly { get; set; }
 
+    public bool ConfettiEnabled { get; set; } = true;
+
     public string ApiBaseUrl { get; set; } = "";
 
     public string ApiKey { get; set; } = "";
@@ -35,6 +37,9 @@ public sealed class AppSettings
     public bool StartMinimizedToTray { get; set; }
 
     public string Hotkey { get; set; } = "Ctrl+Shift+D";
+
+    /// <summary>Optional global hotkey that opens the quick-add capture bar. Empty = off.</summary>
+    public string QuickAddHotkey { get; set; } = "";
 
     public int FocusMinutes { get; set; } = 25;
 
@@ -84,7 +89,8 @@ public sealed class AppSettings
             ? "Reports"
             : ReportFolder.Replace('\\', '/').Trim().Trim('/');
         ReportFilePattern = string.IsNullOrWhiteSpace(ReportFilePattern) ? "yyyy-MM" : ReportFilePattern.Trim();
-        Hotkey = string.IsNullOrWhiteSpace(Hotkey) ? "Ctrl+Shift+D" : Hotkey.Trim();
+        Hotkey = (Hotkey ?? "").Trim();
+        QuickAddHotkey = (QuickAddHotkey ?? "").Trim();
         var focus = FocusDuration.Normalize(FocusMinutes, BreakMinutes);
         FocusMinutes = focus.FocusMinutes;
         BreakMinutes = focus.BreakMinutes;
@@ -118,6 +124,7 @@ public sealed class AppSettings
             InspirationHeading = InspirationHeading,
             ReminderSound = ReminderSound,
             ReminderToastOnly = ReminderToastOnly,
+            ConfettiEnabled = ConfettiEnabled,
             ApiBaseUrl = ApiBaseUrl,
             ApiKey = ApiKey,
             ApiModel = ApiModel,
@@ -127,6 +134,7 @@ public sealed class AppSettings
             MinimizeToTray = MinimizeToTray,
             StartMinimizedToTray = StartMinimizedToTray,
             Hotkey = Hotkey,
+            QuickAddHotkey = QuickAddHotkey,
             FocusMinutes = FocusMinutes,
             BreakMinutes = BreakMinutes,
             WindowLeft = WindowLeft,

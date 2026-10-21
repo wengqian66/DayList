@@ -12,12 +12,24 @@ namespace DayList;
 /// </summary>
 internal static class SoftUi
 {
-    private static readonly Color Cream = Color.FromArgb(255, 0xF7, 0xF2, 0xEA);
-    private static readonly Color Paper = Color.FromArgb(255, 0xFF, 0xFB, 0xF6);
-    private static readonly Color Line = Color.FromArgb(255, 0xE4, 0xD8, 0xC8);
-    private static readonly Color Ink = Color.FromArgb(255, 0x3D, 0x34, 0x29);
-    private static readonly Color Muted = Color.FromArgb(255, 0x7A, 0x6F, 0x62);
-    private static readonly Color Deep = Color.FromArgb(255, 0xF0, 0xE8, 0xDC);
+    private static Color Cream => ThemeColor("SoftCreamColor", 0xF7, 0xF2, 0xEA);
+    private static Color Paper => ThemeColor("SoftCardColor", 0xFF, 0xFB, 0xF6);
+    private static Color Line => ThemeColor("SoftLineColor", 0xE4, 0xD8, 0xC8);
+    private static Color Ink => ThemeColor("SoftInkColor", 0x3D, 0x34, 0x29);
+    private static Color Muted => ThemeColor("SoftMutedInkColor", 0x7A, 0x6F, 0x62);
+    private static Color Deep => ThemeColor("SoftCreamDeepColor", 0xF0, 0xE8, 0xDC);
+
+    private static Color ThemeColor(string key, byte r, byte g, byte b)
+    {
+        if (Application.Current is not null
+            && Application.Current.Resources.TryGetValue(key, out var value)
+            && value is Color color)
+        {
+            return color;
+        }
+
+        return Color.FromArgb(255, r, g, b);
+    }
 
     public static Style? DialogFieldStyle => StyleOf("SoftSettingsFieldStyle");
 
@@ -50,7 +62,7 @@ internal static class SoftUi
             CloseButtonText = closeText,
             DefaultButton = defaultButton,
             XamlRoot = xamlRoot,
-            RequestedTheme = ElementTheme.Light,
+            RequestedTheme = ElementTheme.Default,
             Background = new SolidColorBrush(Cream),
             BorderBrush = new SolidColorBrush(Line),
             BorderThickness = new Thickness(1),
@@ -92,7 +104,7 @@ internal static class SoftUi
             MinHeight = minHeight,
             MaxHeight = maxHeight,
             FontSize = 14,
-            RequestedTheme = ElementTheme.Light,
+            RequestedTheme = ElementTheme.Default,
             Background = new SolidColorBrush(Paper),
             Foreground = new SolidColorBrush(Ink),
             BorderBrush = new SolidColorBrush(Line),
@@ -124,7 +136,7 @@ internal static class SoftUi
         if (combo is null)
             return;
 
-        combo.RequestedTheme = ElementTheme.Light;
+        combo.RequestedTheme = ElementTheme.Default;
         combo.Background = new SolidColorBrush(Paper);
         combo.Foreground = new SolidColorBrush(Ink);
         combo.BorderBrush = new SolidColorBrush(Line);
@@ -191,7 +203,7 @@ internal static class SoftUi
                     new Setter(Control.BorderThicknessProperty, new Thickness(1)),
                     new Setter(Control.CornerRadiusProperty, new CornerRadius(12)),
                     new Setter(Control.PaddingProperty, new Thickness(4)),
-                    new Setter(FrameworkElement.RequestedThemeProperty, ElementTheme.Light)
+                    new Setter(FrameworkElement.RequestedThemeProperty, ElementTheme.Default)
                 }
             };
         }
@@ -232,7 +244,7 @@ internal static class SoftUi
         switch (content)
         {
             case TextBox box:
-                box.RequestedTheme = ElementTheme.Light;
+                box.RequestedTheme = ElementTheme.Default;
                 box.Background = new SolidColorBrush(Paper);
                 box.Foreground = new SolidColorBrush(Ink);
                 box.BorderBrush = new SolidColorBrush(Line);

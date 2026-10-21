@@ -66,6 +66,10 @@ public static class QuickAddPhrase
         @"(?<![A-Za-z0-9])[#＃](?<name>[^\s#＃]+)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private static readonly Regex AtToken = new(
+        @"@(?<body>[^\s@#＃]+)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     public static QuickAddParse Parse(string? raw, DateOnly today, IEnumerable<string>? knownCategories = null)
     {
         var original = Collapse(raw);
@@ -74,6 +78,35 @@ public static class QuickAddPhrase
 
         var work = original;
         var recognized = false;
+        DateOnly? date = null;
+        TimeOnly? reminder = null;
+
+        // Explicit "@date/time" marker, e.g. "@明天9点" / "@9点" / "@20:00".
+        // A lone "@" not followed by a recognizable date/time is left alone (e.g. @mentions).
+        var at = AtToken.Match(work);
+        if (at.Success)
+        {
+            var probe = at.Groups["body"].Value;
+            var probePart = DayPart.None;
+            var gotDate = false;
+            DateOnly? atDate = null;
+            if (TryFindDate(probe, today, out var dateHit))
+            {
+                atDate = dateHit.Date;
+                probePart = dateHit.Part;
+                probe = Cut(probe, dateHit.Index, dateHit.Length);
+                gotDate = true;
+            }
+
+            var gotClock = TryFindClock(probe, probePart, out var atClock, out _, out _);
+            if (gotDate || gotClock)
+            {
+                date = atDate;
+                reminder = gotClock ? atClock : null;
+                work = Cut(work, at.Index, at.Length);
+                recognized = true;
+            }
+        }
 
         string? category = null;
         var tag = Tag.Match(work);
@@ -87,7 +120,6 @@ public static class QuickAddPhrase
             recognized = true;
         }
 
-        DateOnly? date = null;
         var dayPart = DayPart.None;
         if (TryFindDate(work, today, out var hit))
         {
@@ -97,7 +129,6 @@ public static class QuickAddPhrase
             recognized = true;
         }
 
-        TimeOnly? reminder = null;
         if (TryFindClock(work, dayPart, out var time, out var clockIndex, out var clockLength))
         {
             reminder = time;

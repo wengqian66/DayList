@@ -24,10 +24,11 @@ public sealed partial class MainWindow : Window
         WindowChrome.ApplyPlacement(this, settings, 1100, 860);
         WindowChrome.SetAlwaysOnTop(this, settings.AlwaysOnTop);
 
-        _tray = new TrayHost(this, ShowFromTray, FocusQuickAdd, ExitFromTray);
+        _tray = new TrayHost(this, ShowFromTray, FocusQuickAdd, ShowFromTrayAndFocusAdd, ExitFromTray);
         ReminderNotifier.Activated += OnReminderActivated;
         ReminderNotifier.EnsureRegistered();
         var hotkeyError = ApplyHotkey(settings);
+        ApplyQuickAddHotkey(settings);
         if (hotkeyError is not null || _tray is { IsTrayVisible: false })
             Activated += ReportHotkeyOnReady;
 
@@ -44,7 +45,14 @@ public sealed partial class MainWindow : Window
         if (_tray is null)
             return "托盘宿主未初始化。";
 
-        var ok = _tray.RegisterHotkey(HotkeySpec.Parse(settings.Hotkey));
+        var text = settings.Hotkey ?? "";
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            _tray.UnregisterHotkey();
+            return null;
+        }
+
+        var ok = _tray.RegisterHotkey(HotkeySpec.Parse(text));
         return ok ? null : _tray.LastHotkeyError;
     }
 
@@ -53,8 +61,11 @@ public sealed partial class MainWindow : Window
     {
         WindowChrome.SetAlwaysOnTop(this, settings.AlwaysOnTop);
         var error = ApplyHotkey(settings);
+        var quickError = ApplyQuickAddHotkey(settings) ? null : _tray?.LastQuickAddHotkeyError;
         if (error is not null)
             _page.ShowShellStatus(error, isError: true);
+        else if (quickError is not null)
+            _page.ShowShellStatus(quickError, isError: true);
         else
             _page.ShowShellStatus($"全局热键已生效：{HotkeySpec.Parse(settings.Hotkey).ToDisplay()}", isError: false);
     }
@@ -63,8 +74,35 @@ public sealed partial class MainWindow : Window
 
     public void FocusQuickAdd()
     {
+        if (SettingsStore.Load().HasVault)
+        {
+            QuickAddWindow.Open();
+            return;
+        }
+
         ShowFromTray();
         _page.FocusAddBox();
+    }
+
+    private void ShowFromTrayAndFocusAdd()
+    {
+        ShowFromTray();
+        _page.FocusAddBox();
+    }
+
+    public bool ApplyQuickAddHotkey(AppSettings settings)
+    {
+        if (_tray is null)
+            return false;
+
+        var text = settings.QuickAddHotkey ?? "";
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            _tray.UnregisterQuickAddHotkey();
+            return true;
+        }
+
+        return _tray.RegisterQuickAddHotkey(HotkeySpec.Parse(text));
     }
 
 

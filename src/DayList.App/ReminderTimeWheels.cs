@@ -20,11 +20,11 @@ internal sealed class ReminderTimeWheels : StackPanel
     private const double HeaderSlot = 22;
     private const double WellWidth = 112;
 
-    private static readonly SolidColorBrush Ink = Brush(0xFF, 0x3D, 0x34, 0x29);
-    private static readonly SolidColorBrush Muted = Brush(0xFF, 0x7A, 0x6F, 0x62);
-    private static readonly SolidColorBrush Paper = Brush(0xFF, 0xFF, 0xFB, 0xF6);
-    private static readonly SolidColorBrush Line = Brush(0xFF, 0xE4, 0xD8, 0xC8);
-    private static readonly SolidColorBrush Deep = Brush(0xFF, 0xF0, 0xE8, 0xDC);
+    private static SolidColorBrush Ink => ThemeColors.Brush(ThemeColors.Ink);
+    private static SolidColorBrush Muted => ThemeColors.Brush(ThemeColors.Muted);
+    private static SolidColorBrush Paper => ThemeColors.Brush(ThemeColors.Paper);
+    private static SolidColorBrush Line => ThemeColors.Brush(ThemeColors.Line);
+    private static SolidColorBrush Deep => ThemeColors.Brush(ThemeColors.Deep);
     private static readonly SolidColorBrush Clear = Brush(0x00, 0x00, 0x00, 0x00);
 
     private readonly WheelColumn _hours;
@@ -191,7 +191,7 @@ internal sealed class ReminderTimeWheels : StackPanel
                 Background = Clear,
                 IsTabStop = true,
                 BringIntoViewOnFocusChange = false,
-                RequestedTheme = ElementTheme.Light
+                RequestedTheme = ElementTheme.Default
             };
             AutomationProperties.SetName(_scroll, automationName);
             _scroll.ViewChanged += OnViewChanged;

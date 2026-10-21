@@ -66,16 +66,26 @@
 
                     <Border Style="{StaticResource SoftSettingsCardStyle}">
                         <StackPanel Spacing="8">
-                            <TextBlock Style="{StaticResource SoftSettingsSectionTitleStyle}" Text="桌面交互" />
+                            <TextBlock Style="{StaticResource SoftSettingsSectionTitleStyle}" Text="桌面" />
                             <CheckBox x:Name="AlwaysOnTopBox" Content="窗口置顶" Foreground="{StaticResource SoftInkBrush}" />
                             <CheckBox x:Name="MinimizeToTrayBox" Content="关闭窗口时最小化到托盘（托盘可退出）" Foreground="{StaticResource SoftInkBrush}" />
                             <CheckBox x:Name="StartMinimizedBox" Content="启动时先最小化到托盘" Foreground="{StaticResource SoftInkBrush}" />
                             <TextBlock Style="{StaticResource SoftSettingsLabelStyle}" Text="全局热键" />
-                            <TextBox x:Name="HotkeyBox" Style="{StaticResource SoftSettingsFieldStyle}" PlaceholderText="点击后按下组合键" IsReadOnly="True" KeyDown="HotkeyBox_KeyDown" />
-                            <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="默认 Ctrl+Shift+D：显示窗口并聚焦添加框。支持 Ctrl/Shift/Alt + 字母或 F1–F12。" TextWrapping="Wrap" />
+                            <TextBox x:Name="HotkeyBox" Style="{StaticResource SoftSettingsFieldStyle}" PlaceholderText="点击后按下组合键，留空停用" IsReadOnly="True" KeyDown="HotkeyBox_KeyDown" />
+                            <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="默认 Ctrl+Shift+D：显示窗口并聚焦添加框。留空或按 Delete 停用。支持 Ctrl/Shift/Alt + 字母或 F1–F12。" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource SoftSettingsLabelStyle}" Text="快速添加热键" />
+                            <TextBox x:Name="QuickAddHotkeyBox" Style="{StaticResource SoftSettingsFieldStyle}" PlaceholderText="留空表示不启用" IsReadOnly="True" KeyDown="QuickAddHotkeyBox_KeyDown" />
+                            <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="不打开主窗口，直接弹出快速添加输入条。按 Delete 清除。" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SoftSettingsCardStyle}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Style="{StaticResource SoftSettingsSectionTitleStyle}" Text="提醒与反馈" />
                             <CheckBox x:Name="ReminderSoundBox" Content="提醒时播放提示音" Foreground="{StaticResource SoftInkBrush}" />
                             <CheckBox x:Name="ReminderToastOnlyBox" Content="只用系统通知，不弹出窗口" Foreground="{StaticResource SoftInkBrush}" />
                             <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="到点在右下角弹出，不拉起主窗口，也不改笔记里的任务。需要本程序开着或在托盘；退出后不补响，再次打开会补上 12 小时内错过的。" TextWrapping="Wrap" />
+                            <CheckBox x:Name="ConfettiBox" Content="完成当天任务时撒花" Foreground="{StaticResource SoftInkBrush}" />
                         </StackPanel>
                     </Border>
 
@@ -94,6 +104,8 @@
                             <TextBlock FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" Text="密钥以明文保存在本机 %AppData%\DayList\settings.json。" TextWrapping="Wrap" />
                             <TextBlock Style="{StaticResource SoftSettingsLabelStyle}" Text="模型" />
                             <TextBox x:Name="ModelBox" Style="{StaticResource SoftSettingsFieldStyle}" PlaceholderText="gpt-4o-mini" TextChanged="FieldChanged" />
+                            <Button HorizontalAlignment="Left" Click="TestConnection_Click" Content="测试连接" CornerRadius="10" />
+                            <TextBlock x:Name="TestResultText" FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
                             <TextBlock x:Name="PreviewText" FontSize="12" Foreground="{StaticResource SoftMutedInkBrush}" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>

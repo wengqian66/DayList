@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using DayList.Core;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -53,7 +54,8 @@ internal static class WindowChrome
             height = Math.Clamp(height, 480, 4000);
             window.AppWindow.Resize(new SizeInt32(width, height));
 
-            if (settings.WindowLeft is double left && settings.WindowTop is double top)
+            if (settings.WindowLeft is double left && settings.WindowTop is double top
+                && IsVisibleOnScreen((int)left, (int)top, width, height))
             {
                 window.AppWindow.Move(new PointInt32((int)left, (int)top));
             }
@@ -70,8 +72,14 @@ internal static class WindowChrome
         {
             var area = window.AppWindow.Position;
             var size = window.AppWindow.Size;
-            settings.WindowLeft = area.X;
-            settings.WindowTop = area.Y;
+            // Don't persist the minimized/hidden sentinel (-32000, -32000) or a
+            // position that would restore off-screen; keep the last good value.
+            if (IsVisibleOnScreen(area.X, area.Y, size.Width, size.Height))
+            {
+                settings.WindowLeft = area.X;
+                settings.WindowTop = area.Y;
+            }
+
             settings.WindowWidth = size.Width;
             settings.WindowHeight = size.Height;
         }
@@ -80,6 +88,32 @@ internal static class WindowChrome
             // Ignore if the window is closing.
         }
     }
+
+    private static bool IsVisibleOnScreen(int left, int top, int width, int height)
+    {
+        // Windows reports minimized/hidden windows at (-32000, -32000); reject that
+        // sentinel and any other far-off coordinate so we never restore off-display.
+        if (left <= -16384 || top <= -16384 || left >= 16384 || top >= 16384)
+            return false;
+
+        int vx = GetSystemMetrics(SmXVirtualScreen);
+        int vy = GetSystemMetrics(SmYVirtualScreen);
+        int vw = GetSystemMetrics(SmCxVirtualScreen);
+        int vh = GetSystemMetrics(SmCyVirtualScreen);
+        if (vw <= 0 || vh <= 0)
+            return true; // Virtual-screen query failed; trust the saved value.
+
+        // At least part of the window must land inside the union of all displays.
+        return left < vx + vw && top < vy + vh && left + width > vx && top + height > vy;
+    }
+
+    private const int SmXVirtualScreen = 76;
+    private const int SmYVirtualScreen = 77;
+    private const int SmCxVirtualScreen = 78;
+    private const int SmCyVirtualScreen = 79;
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
 
     public static void SetAlwaysOnTop(Window window, bool enabled)
     {

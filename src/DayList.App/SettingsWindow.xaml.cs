@@ -1,4 +1,4 @@
-﻿using DayList.Core;
+using DayList.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -12,6 +12,7 @@ public sealed partial class SettingsWindow : Window
 {
     private bool _filling;
     private AppSettings _seed;
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
 
     public SettingsWindow(AppSettings current)
     {
@@ -62,9 +63,15 @@ public sealed partial class SettingsWindow : Window
         AlwaysOnTopBox.IsChecked = settings.AlwaysOnTop;
         MinimizeToTrayBox.IsChecked = settings.MinimizeToTray;
         StartMinimizedBox.IsChecked = settings.StartMinimizedToTray;
-        HotkeyBox.Text = HotkeySpec.Parse(settings.Hotkey).ToDisplay();
+        HotkeyBox.Text = string.IsNullOrWhiteSpace(settings.Hotkey)
+            ? ""
+            : HotkeySpec.Parse(settings.Hotkey).ToDisplay();
+        QuickAddHotkeyBox.Text = string.IsNullOrWhiteSpace(settings.QuickAddHotkey)
+            ? ""
+            : HotkeySpec.Parse(settings.QuickAddHotkey).ToDisplay();
         ReminderSoundBox.IsChecked = settings.ReminderSound;
         ReminderToastOnlyBox.IsChecked = settings.ReminderToastOnly;
+        ConfettiBox.IsChecked = settings.ConfettiEnabled;
         _filling = false;
         UpdatePreview();
     }
@@ -80,6 +87,7 @@ public sealed partial class SettingsWindow : Window
             InspirationHeading = string.IsNullOrWhiteSpace(InspirationBox.Text) ? "## 灵感" : InspirationBox.Text,
             ReminderSound = ReminderSoundBox.IsChecked == true,
             ReminderToastOnly = ReminderToastOnlyBox.IsChecked == true,
+            ConfettiEnabled = ConfettiBox.IsChecked == true,
             ReportFolder = ReportFolderBox.Text ?? "",
             ReportFilePattern = ReportPatternBox.Text ?? "",
             ApiBaseUrl = ApiUrlBox.Text ?? "",
@@ -89,6 +97,7 @@ public sealed partial class SettingsWindow : Window
             MinimizeToTray = MinimizeToTrayBox.IsChecked == true,
             StartMinimizedToTray = StartMinimizedBox.IsChecked == true,
             Hotkey = HotkeyBox.Text ?? "",
+            QuickAddHotkey = QuickAddHotkeyBox.Text ?? "",
             FocusMinutes = _seed.FocusMinutes,
             BreakMinutes = _seed.BreakMinutes,
             WindowLeft = _seed.WindowLeft,
@@ -98,7 +107,8 @@ public sealed partial class SettingsWindow : Window
             TaskCategories = _seed.TaskCategories?.ToList() ?? new List<string>(),
             RetiredTaskCategories = _seed.RetiredTaskCategories?.ToList() ?? new List<string>()
         };
-        draft.Hotkey = HotkeySpec.Parse(draft.Hotkey).ToDisplay();
+        if (!string.IsNullOrWhiteSpace(draft.Hotkey))
+            draft.Hotkey = HotkeySpec.Parse(draft.Hotkey).ToDisplay();
         draft.Normalize();
         return draft;
     }
@@ -136,7 +146,7 @@ public sealed partial class SettingsWindow : Window
                 ? " 灵感小节和待办小节同名，记灵感前需要改开。"
                 : "";
             PreviewText.Text =
-                $"今天写入 {daily} 的小节「{title}」（笔记里是 {HeadingSpec.Format(level, title)}）。灵感写入「{inspiration}」。AI 月报写入 {report}。热键 {draft.Hotkey}。{clash}";
+                $"今天写入 {daily} 的小节「{title}」（笔记里是 {HeadingSpec.Format(level, title)}）。灵感写入「{inspiration}」。AI 月报写入 {report}。热键 {(string.IsNullOrWhiteSpace(draft.Hotkey) ? "已停用" : draft.Hotkey)}。{clash}";
         }
         catch (Exception ex)
         {
@@ -167,6 +177,63 @@ public sealed partial class SettingsWindow : Window
         }
 
         ApplyVault(path);
+    }
+
+    private async void TestConnection_Click(object sender, RoutedEventArgs e)
+    {
+        if (TestResultText is null)
+            return;
+
+        TestResultText.Visibility = Visibility.Visible;
+        TestResultText.Text = "正在测试…";
+        TestResultText.Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SoftMutedInkBrush"];
+
+        var draft = ReadDraft();
+        string? fail = null;
+        if (!Uri.TryCreate(draft.ApiBaseUrl, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            fail = "请先填一个完整的 Base URL（http 或 https）。";
+        else if (string.IsNullOrWhiteSpace(draft.ApiKey))
+            fail = "请先填 API Key。";
+        else if (string.IsNullOrWhiteSpace(draft.ApiModel))
+            fail = "请先填模型名。";
+
+        if (fail is not null)
+        {
+            TestResultText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xB3, 0x3A, 0x3A));
+            TestResultText.Text = fail;
+            return;
+        }
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, ChatProtocol.Endpoint(draft.ApiBaseUrl));
+            request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + draft.ApiKey);
+            request.Content = new StringContent(
+                ChatProtocol.BuildRequest(draft.ApiModel, "你是助手。", "请回复两个字：正常"),
+                System.Text.Encoding.UTF8,
+                "application/json");
+            using var response = await Http.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = ChatProtocol.ReadError(body);
+                TestResultText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xB3, 0x3A, 0x3A));
+                TestResultText.Text = "连接失败（HTTP " + (int)response.StatusCode + "）" + (err is null ? "" : "：" + err);
+                return;
+            }
+
+            var reply = ChatProtocol.ReadAssistantContent(body);
+            TestResultText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0x2E, 0x7D, 0x32));
+            TestResultText.Text = reply is null
+                ? "连接成功，但返回内容无法解析。"
+                : "连接成功，模型回复：" + reply.Trim();
+        }
+        catch (Exception ex)
+        {
+            TestResultText.Foreground = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xB3, 0x3A, 0x3A));
+            TestResultText.Text = "连接失败：" + ex.Message;
+        }
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
@@ -211,6 +278,34 @@ public sealed partial class SettingsWindow : Window
 
     private void HotkeyBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (e.Key is VirtualKey.Delete or VirtualKey.Back)
+        {
+            e.Handled = true;
+            _filling = true;
+            HotkeyBox.Text = "";
+            _filling = false;
+            return;
+        }
+
+        CaptureHotkey(e, HotkeyBox);
+    }
+
+    private void QuickAddHotkeyBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key is VirtualKey.Delete or VirtualKey.Back)
+        {
+            e.Handled = true;
+            _filling = true;
+            QuickAddHotkeyBox.Text = "";
+            _filling = false;
+            return;
+        }
+
+        CaptureHotkey(e, QuickAddHotkeyBox);
+    }
+
+    private void CaptureHotkey(KeyRoutedEventArgs e, TextBox target)
+    {
         e.Handled = true;
         var key = e.Key;
         if (key is VirtualKey.Control or VirtualKey.LeftControl or VirtualKey.RightControl
@@ -246,7 +341,7 @@ public sealed partial class SettingsWindow : Window
 
         var spec = new HotkeySpec(ctrl, shift, alt, vk);
         _filling = true;
-        HotkeyBox.Text = spec.ToDisplay();
+        target.Text = spec.ToDisplay();
         _filling = false;
         ErrorText.Text = "";
         UpdatePreview();

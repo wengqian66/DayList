@@ -10,25 +10,54 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <Color x:Key="SoftCreamColor">#FFF7F2EA</Color>
-            <Color x:Key="SoftCreamDeepColor">#FFF0E8DC</Color>
-            <Color x:Key="SoftCardColor">#FFFFFBF6</Color>
-            <Color x:Key="SoftInkColor">#FF3D3429</Color>
-            <Color x:Key="SoftMutedInkColor">#FF7A6F62</Color>
-            <Color x:Key="SoftLineColor">#FFE4D8C8</Color>
-            <Color x:Key="SoftAmberColor">#FFF3E0C4</Color>
-            <Color x:Key="SoftAmberInkColor">#FF8A5A20</Color>
-            <Color x:Key="SoftNavSelectedColor">#FFE7D9C4</Color>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="SoftCreamColor">#FFF7F2EA</Color>
+                    <Color x:Key="SoftCreamDeepColor">#FFF0E8DC</Color>
+                    <Color x:Key="SoftCardColor">#FFFFFBF6</Color>
+                    <Color x:Key="SoftInkColor">#FF3D3429</Color>
+                    <Color x:Key="SoftMutedInkColor">#FF6B5F52</Color>
+                    <Color x:Key="SoftLineColor">#FFE4D8C8</Color>
+                    <Color x:Key="SoftAmberColor">#FFF3E0C4</Color>
+                    <Color x:Key="SoftAmberInkColor">#FF8A5A20</Color>
+                    <Color x:Key="SoftNavSelectedColor">#FFE7D9C4</Color>
+                    <Color x:Key="SoftPlaceholderColor">#666B5F52</Color>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="SoftCreamColor">#FF2B2621</Color>
+                    <Color x:Key="SoftCreamDeepColor">#FF241F1B</Color>
+                    <Color x:Key="SoftCardColor">#FF38322B</Color>
+                    <Color x:Key="SoftInkColor">#FFEDE4D6</Color>
+                    <Color x:Key="SoftMutedInkColor">#FFA9988A</Color>
+                    <Color x:Key="SoftLineColor">#FF4C443B</Color>
+                    <Color x:Key="SoftAmberColor">#FF4A3A22</Color>
+                    <Color x:Key="SoftAmberInkColor">#FFD9A96B</Color>
+                    <Color x:Key="SoftNavSelectedColor">#FF4A423A</Color>
+                    <Color x:Key="SoftPlaceholderColor">#66A9988A</Color>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
 
-            <SolidColorBrush x:Key="SoftCreamBrush" Color="{StaticResource SoftCreamColor}" />
-            <SolidColorBrush x:Key="SoftCreamDeepBrush" Color="{StaticResource SoftCreamDeepColor}" />
-            <SolidColorBrush x:Key="SoftCardBrush" Color="{StaticResource SoftCardColor}" />
-            <SolidColorBrush x:Key="SoftInkBrush" Color="{StaticResource SoftInkColor}" />
-            <SolidColorBrush x:Key="SoftMutedInkBrush" Color="{StaticResource SoftMutedInkColor}" />
-            <SolidColorBrush x:Key="SoftLineBrush" Color="{StaticResource SoftLineColor}" />
-            <SolidColorBrush x:Key="SoftAmberBrush" Color="{StaticResource SoftAmberColor}" />
-            <SolidColorBrush x:Key="SoftAmberInkBrush" Color="{StaticResource SoftAmberInkColor}" />
-            <SolidColorBrush x:Key="SoftNavSelectedBrush" Color="{StaticResource SoftNavSelectedColor}" />
+            <SolidColorBrush x:Key="SoftCreamBrush" Color="{ThemeResource SoftCreamColor}" />
+            <SolidColorBrush x:Key="SoftCreamDeepBrush" Color="{ThemeResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="SoftCardBrush" Color="{ThemeResource SoftCardColor}" />
+            <SolidColorBrush x:Key="SoftInkBrush" Color="{ThemeResource SoftInkColor}" />
+            <SolidColorBrush x:Key="SoftMutedInkBrush" Color="{ThemeResource SoftMutedInkColor}" />
+            <SolidColorBrush x:Key="SoftLineBrush" Color="{ThemeResource SoftLineColor}" />
+            <SolidColorBrush x:Key="SoftAmberBrush" Color="{ThemeResource SoftAmberColor}" />
+            <SolidColorBrush x:Key="SoftAmberInkBrush" Color="{ThemeResource SoftAmberInkColor}" />
+            <SolidColorBrush x:Key="SoftNavSelectedBrush" Color="{ThemeResource SoftNavSelectedColor}" />
+            <SolidColorBrush x:Key="SoftPlaceholderBrush" Color="{ThemeResource SoftPlaceholderColor}" />
+
+            <!-- Typography tokens -->
+            <FontFamily x:Key="DayListBodyFont">Segoe UI Variable, Segoe UI, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+            <FontFamily x:Key="DayListMonoFont">Cascadia Mono, Consolas</FontFamily>
+            <x:Double x:Key="TextSizeCaption">12</x:Double>
+            <x:Double x:Key="TextSizeSecondary">13</x:Double>
+            <x:Double x:Key="TextSizeBody">14</x:Double>
+            <x:Double x:Key="TextSizeSection">15</x:Double>
+            <x:Double x:Key="TextSizeHeading">16</x:Double>
+            <x:Double x:Key="TextSizeTitle">22</x:Double>
+            <x:Double x:Key="TextSizeDisplay">26</x:Double>
 
             <CornerRadius x:Key="CardCornerRadius">16</CornerRadius>
             <CornerRadius x:Key="PillCornerRadius">22</CornerRadius>
@@ -63,20 +92,20 @@
             </Style>
 
             <Style x:Key="CategoryChipStyle" TargetType="Button">
-                <Setter Property="Background" Value="#F0E8DCC8" />
+                <Setter Property="Background" Value="{ThemeResource SoftCreamDeepBrush}" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Padding" Value="8,2" />
                 <Setter Property="MinWidth" Value="0" />
                 <Setter Property="MinHeight" Value="24" />
-                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontSize" Value="12" />
                 <Setter Property="CornerRadius" Value="8" />
                 <Setter Property="Foreground" Value="{StaticResource SoftMutedInkBrush}" />
             </Style>
 
             <!-- Text chips size to their label. QuietButtonStyle's fixed 36px width clips 「全部」. -->
             <Style x:Key="SoftChipButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
-                <Setter Property="Background" Value="#FFFFFBF6" />
-                <Setter Property="BorderBrush" Value="#E6D3B8" />
+                <Setter Property="Background" Value="{ThemeResource SoftCardBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource SoftAmberInkBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="Padding" Value="14,5,12,5" />
                 <Setter Property="MinWidth" Value="0" />
@@ -170,7 +199,7 @@
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="Padding" Value="2,1" />
-                <Setter Property="FontSize" Value="11" />
+                <Setter Property="FontSize" Value="12" />
                 <Setter Property="MinHeight" Value="22" />
                 <Setter Property="MinWidth" Value="48" />
                 <Setter Property="MaxWidth" Value="160" />
@@ -195,7 +224,7 @@
                 <Setter Property="Foreground" Value="{StaticResource SoftInkBrush}" />
             </Style>
             <Style x:Key="SoftSettingsFieldStyle" TargetType="TextBox">
-                <Setter Property="Background" Value="#F2FFFBF6" />
+                <Setter Property="Background" Value="{ThemeResource SoftCardBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="10" />
@@ -206,13 +235,13 @@
             <!-- Soft overlays: dialogs, flyouts, calendar, infobars -->
             <SolidColorBrush x:Key="SoftDialogScrimBrush" Color="#66000000" />
             <SolidColorBrush x:Key="SoftAccentBrush" Color="#FF5B9BD5" />
-            <SolidColorBrush x:Key="SoftCalendarChromeBrush" Color="#FFE0D2C0" />
-            <SolidColorBrush x:Key="SoftCalendarDayBrush" Color="#FFF7F2EA" />
-            <SolidColorBrush x:Key="SoftCalendarMarkedBrush" Color="#FFE4CDB4" />
-            <SolidColorBrush x:Key="SoftInfoBarSuccessBrush" Color="#FFE5F0D8" />
-            <SolidColorBrush x:Key="SoftInfoBarWarningBrush" Color="#FFF3E0C4" />
-            <SolidColorBrush x:Key="SoftInfoBarErrorBrush" Color="#FFF3D6D2" />
-            <SolidColorBrush x:Key="SoftInfoBarInformationalBrush" Color="#FFE0EAF4" />
+            <SolidColorBrush x:Key="SoftCalendarChromeBrush" Color="{ThemeResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="SoftCalendarDayBrush" Color="{ThemeResource SoftCreamColor}" />
+            <SolidColorBrush x:Key="SoftCalendarMarkedBrush" Color="{ThemeResource SoftAmberColor}" />
+            <SolidColorBrush x:Key="SoftInfoBarSuccessBrush" Color="{ThemeResource SoftCardColor}" />
+            <SolidColorBrush x:Key="SoftInfoBarWarningBrush" Color="{ThemeResource SoftAmberColor}" />
+            <SolidColorBrush x:Key="SoftInfoBarErrorBrush" Color="{ThemeResource SoftCardColor}" />
+            <SolidColorBrush x:Key="SoftInfoBarInformationalBrush" Color="{ThemeResource SoftCardColor}" />
 
             <Style x:Key="SoftDialogPrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
                 <Setter Property="CornerRadius" Value="10" />
@@ -289,7 +318,7 @@
             <Style TargetType="InfoBar" BasedOn="{StaticResource SoftInfoBarStyle}" />
 
             <Style x:Key="SoftPasswordBoxStyle" TargetType="PasswordBox">
-                <Setter Property="Background" Value="#F2FFFBF6" />
+                <Setter Property="Background" Value="{ThemeResource SoftCardBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="10" />
@@ -298,34 +327,45 @@
             </Style>
 
 
-            <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#FFF7F2EA" />
-            <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#FFE4D8C8" />
-            <SolidColorBrush x:Key="MenuFlyoutItemBackground" Color="#FFF7F2EA" />
-            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="#FFF0E8DC" />
-            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="#FFE4D8C8" />
-            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundFocused" Color="#FFF0E8DC" />
-            <SolidColorBrush x:Key="MenuFlyoutItemForeground" Color="#FF3D3429" />
-            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPointerOver" Color="#FF3D3429" />
-            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPressed" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="{ThemeResource SoftCreamColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="{ThemeResource SoftLineColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackground" Color="{ThemeResource SoftCreamColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="{ThemeResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="{ThemeResource SoftLineColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutItemBackgroundFocused" Color="{ThemeResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutItemForeground" Color="{ThemeResource SoftInkColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPointerOver" Color="{ThemeResource SoftInkColor}" />
+            <SolidColorBrush x:Key="MenuFlyoutItemForegroundPressed" Color="{ThemeResource SoftInkColor}" />
+
+            <!-- Cream button interaction states: replace default gray/blue hover & pressed -->
+            <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{ThemeResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{ThemeResource SoftLineColor}" />
+            <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#00FFFFFF" />
+            <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="{ThemeResource SoftInkColor}" />
+            <SolidColorBrush x:Key="ButtonForegroundPressed" Color="{ThemeResource SoftInkColor}" />
+            <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="{ThemeResource SoftMutedInkColor}" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#00FFFFFF" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#00FFFFFF" />
+            <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#00FFFFFF" />
 
             <!-- Force ComboBox popup off acrylic white -->
-            <SolidColorBrush x:Key="AcrylicInAppFillColorDefaultBrush" Color="#FFF7F2EA" />
-            <SolidColorBrush x:Key="AcrylicBackgroundFillColorDefaultBrush" Color="#FFF7F2EA" />
-            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FFF7F2EA" />
-            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerOver" Color="#FFF0E8DC" />
-            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerPressed" Color="#FFE4D8C8" />
-            <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#FFE4D8C8" />
-            <SolidColorBrush x:Key="ComboBoxDropDownForeground" Color="#FF3D3429" />
-            <SolidColorBrush x:Key="ComboBoxItemBackground" Color="#FFF7F2EA" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="#FFF0E8DC" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="#FFE4D8C8" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="#FFF0E8DC" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#FFE8DCC8" />
-            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedUnfocused" Color="#FFF0E8DC" />
-            <SolidColorBrush x:Key="ComboBoxItemForeground" Color="#FF3D3429" />
-            <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="#FF3D3429" />
-            <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="#FF3D3429" />
-            <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedUnfocused" Color="#FF3D3429" />
+            <SolidColorBrush x:Key="AcrylicInAppFillColorDefaultBrush" Color="{ThemeResource SoftCreamColor}" />
+            <SolidColorBrush x:Key="AcrylicBackgroundFillColorDefaultBrush" Color="{ThemeResource SoftCreamColor}" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{ThemeResource SoftCreamColor}" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerOver" Color="{ThemeResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBackgroundPointerPressed" Color="{ThemeResource SoftLineColor}" />
+            <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="{ThemeResource SoftLineColor}" />
+            <SolidColorBrush x:Key="ComboBoxDropDownForeground" Color="{ThemeResource SoftInkColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackground" Color="{ThemeResource SoftCreamColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="{ThemeResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="{ThemeResource SoftLineColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="{ThemeResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="{ThemeResource SoftNavSelectedColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedUnfocused" Color="{ThemeResource SoftCreamDeepColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemForeground" Color="{ThemeResource SoftInkColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="{ThemeResource SoftInkColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="{ThemeResource SoftInkColor}" />
+            <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedUnfocused" Color="{ThemeResource SoftInkColor}" />
             <SolidColorBrush x:Key="ComboBoxItemPillFillBrush" Color="#FF5B9BD5" />
 
             <Style x:Key="SoftComboBoxItemStyle" TargetType="ComboBoxItem" BasedOn="{StaticResource DefaultComboBoxItemStyle}">
@@ -354,9 +394,9 @@
             </Style>
 
 
-            <SolidColorBrush x:Key="SoftPinCheckedBrush" Color="#FFE8DCC8" />
-            <SolidColorBrush x:Key="SoftPinCheckedBorderBrush" Color="#FFC4B09A" />
-            <SolidColorBrush x:Key="SoftPinCheckedForegroundBrush" Color="#FF6B5344" />
+            <SolidColorBrush x:Key="SoftPinCheckedBrush" Color="{ThemeResource SoftNavSelectedColor}" />
+            <SolidColorBrush x:Key="SoftPinCheckedBorderBrush" Color="{ThemeResource SoftLineColor}" />
+            <SolidColorBrush x:Key="SoftPinCheckedForegroundBrush" Color="{ThemeResource SoftMutedInkColor}" />
 
             <Style x:Key="SoftPinToggleStyle" TargetType="ToggleButton">
                 <Setter Property="Background" Value="Transparent" />
@@ -417,7 +457,7 @@
                 <Setter Property="Background" Value="{StaticResource SoftCardBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource SoftLineBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="24" />
+                <Setter Property="CornerRadius" Value="22" />
                 <Setter Property="Padding" Value="14,8" />
             </Style>
         </ResourceDictionary>

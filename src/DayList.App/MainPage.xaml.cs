@@ -64,11 +64,11 @@ public sealed partial class MainPage : Page
     private CarryOverMemory _carryMemory = new();
     private List<OverdueTaskItem> _pendingOverdue = new();
     private string _overdueFilter = CarryOverOffer.AllLabel;
+    private string _searchText = "";
+    private bool _planMode;
+    private bool _planBusy;
     private bool _templatesReady;
     private bool _noteMatchesDisk = true;
-    private DateTimeOffset? _lastSyncAt;
-    private bool _syncError;
-    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _syncClock;
     private int _celebrationToken;
     private int _celebrationHideToken;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _celebrationTimer;
@@ -76,6 +76,9 @@ public sealed partial class MainPage : Page
     private int _statusToken;
     private int _statusDismissToken;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _statusTimer;
+    private Action? _undoAction;
+    private Action? _undoExpire;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _undoTimer;
     private readonly List<InspirationEntry> _inspirations = new();
     private readonly ObservableCollection<InspirationGlance> _inspirationGlance = new();
     private bool _inspirationDialogOpen;
@@ -227,6 +230,7 @@ public sealed partial class MainPage : Page
         _reminderTimer.Tick += (_, _) => CheckReminders();
         _reminderTimer.Start();
         CheckReminders();
+        _ = CheckForUpdatesAsync();
 
         _focus.Use(FocusDuration.Normalize(_settings.FocusMinutes, _settings.BreakMinutes));
         _focusTimer = DispatcherQueue.CreateTimer();
@@ -255,7 +259,6 @@ public sealed partial class MainPage : Page
         _reminderTimer?.Stop();
         _focusTimer?.Stop();
         FocusPopup.Dismiss();
-        _syncClock?.Stop();
         HideCelebration();
         _watcher?.Dispose();
         _watcher = null;
@@ -276,13 +279,10 @@ public sealed partial class MainPage : Page
             SetSectionChromeVisible(false);
             OverduePanel.Visibility = Visibility.Collapsed;
             NavInspirationCount.Text = "";
-            if (SyncCapsule is not null)
-                SyncCapsule.Visibility = Visibility.Collapsed;
         }
         else
         {
             RefreshSectionTitleChrome();
-            RenderSyncCapsule();
         }
     }
 
@@ -380,7 +380,9 @@ public sealed partial class MainPage : Page
             _cards.Clear();
             IEnumerable<TaskRow> source = _rows;
             if (_nav == MainNav.Completed)
-                source = _rows.Where(row => row.IsDone);
+                source = source.Where(row => row.IsDone);
+            if (!string.IsNullOrWhiteSpace(_searchText))
+                source = source.Where(row => row.Text.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
 
             // Saved categories with no tasks this day stay in the picker only.
             foreach (var group in CategoryGrouping.ForMainList(source, row => row.Category))
@@ -1039,6 +1041,11 @@ public sealed partial class MainPage : Page
         Persist();
     }
 
+    private void RowMore_Click(object sender, RoutedEventArgs e)
+    {
+        ShowTaskMenuFrom(sender, null);
+    }
+
     private void MoveTaskToNextDay(TaskRow row)
     {
         if (_pendingExternal)
@@ -1057,6 +1064,11 @@ public sealed partial class MainPage : Page
         var index = _rows.IndexOf(row);
         if (index < 0)
             return;
+
+        var taskSnapshot = row.ToTask();
+        var reminder = string.IsNullOrEmpty(row.ReminderId)
+            ? null
+            : ReminderStore.Find(ReminderStore.DefaultPath, row.ReminderId);
 
         var next = _date.AddDays(1);
         DailyNoteSnapshot snapshot;
@@ -1114,7 +1126,7 @@ public sealed partial class MainPage : Page
             }
         }
 
-        ShowStatus("已挪到" + WhenLabel(next) + "。", InfoBarSeverity.Success);
+        OfferUndo("已挪到" + WhenLabel(next), () => UndoMoveToNextDay(taskSnapshot, reminder, index), null);
     }
 
     private void ConvertTaskToInspiration(TaskRow row)
@@ -1357,14 +1369,20 @@ public sealed partial class MainPage : Page
             card.RefreshStats();
 
         var today = DateOnly.FromDateTime(DateTime.Now);
+        var searching = !string.IsNullOrWhiteSpace(_searchText);
+        var visibleCount = _cards.Sum(card => card.Tasks.Count);
         var showTemplates = _nav == MainNav.Today && total == 0 && _settings.HasVault;
         if (_nav == MainNav.Completed)
         {
-            EmptyHint.Text = done == 0 ? "还没有已完成的任务" : "";
-            EmptyState.Visibility = done == 0 ? Visibility.Visible : Visibility.Collapsed;
+            EmptyHint.Text = searching
+                ? (visibleCount == 0 ? "没有匹配的任务" : "")
+                : done == 0 ? "还没有已完成的任务" : "";
+            EmptyState.Visibility = (searching ? visibleCount == 0 : done == 0) ? Visibility.Visible : Visibility.Collapsed;
             TemplateLead.Visibility = Visibility.Collapsed;
             TemplateHost.Visibility = Visibility.Collapsed;
-            GreetingText.Text = done == 0 ? "完成任务后会出现在这里。" : "这些是已经勾掉的任务。";
+            GreetingText.Text = searching
+                ? "没有匹配的任务。"
+                : done == 0 ? "完成任务后会出现在这里。" : "这些是已经勾掉的任务。";
         }
         else if (_nav == MainNav.Flow)
         {
@@ -1375,17 +1393,19 @@ public sealed partial class MainPage : Page
         }
         else
         {
-            EmptyHint.Text = _date == today
-                ? "今天还没有任务"
-                : "这一天还没有任务";
-            EmptyState.Visibility = total == 0 ? Visibility.Visible : Visibility.Collapsed;
-            TemplateLead.Visibility = showTemplates ? Visibility.Visible : Visibility.Collapsed;
-            TemplateHost.Visibility = showTemplates ? Visibility.Visible : Visibility.Collapsed;
-            GreetingText.Text = total == 0
-                ? "今天也是充实的一天。"
-                : open == 0
-                    ? "今天的任务都完成了。"
-                    : "今天也是充实的一天。";
+            EmptyHint.Text = searching
+                ? (visibleCount == 0 ? "没有匹配的任务" : "")
+                : _date == today ? "今天还没有任务" : "这一天还没有任务";
+            EmptyState.Visibility = (searching ? visibleCount == 0 : total == 0) ? Visibility.Visible : Visibility.Collapsed;
+            TemplateLead.Visibility = showTemplates && !searching ? Visibility.Visible : Visibility.Collapsed;
+            TemplateHost.Visibility = showTemplates && !searching ? Visibility.Visible : Visibility.Collapsed;
+            GreetingText.Text = searching
+                ? "没有匹配的任务。"
+                : total == 0
+                    ? "今天也是充实的一天。"
+                    : open == 0
+                        ? "今天的任务都完成了。"
+                        : "今天也是充实的一天。";
         }
 
         SyncNavChrome();
@@ -1466,6 +1486,26 @@ public sealed partial class MainPage : Page
         RefreshOverdue();
     }
 
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _searchText = SearchBoxInput?.Text ?? "";
+        if (SearchClearButton is not null)
+            SearchClearButton.Visibility = _searchText.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        RebuildList();
+        UpdateStats();
+    }
+
+    private void SearchClear_Click(object sender, RoutedEventArgs e)
+    {
+        if (SearchBoxInput is not null)
+            SearchBoxInput.Text = "";
+        _searchText = "";
+        if (SearchClearButton is not null)
+            SearchClearButton.Visibility = Visibility.Collapsed;
+        RebuildList();
+        UpdateStats();
+    }
+
     private void SyncNavChrome()
     {
         if (NavTodayButton is null || NavDoneButton is null)
@@ -1476,8 +1516,10 @@ public sealed partial class MainPage : Page
         var flow = _nav == MainNav.Flow;
         NavTodayButton.Background = _nav == MainNav.Today ? selected : clear;
         NavDoneButton.Background = _nav == MainNav.Completed ? selected : clear;
-        if (NavFlowButton is not null)
-            NavFlowButton.Background = flow ? selected : clear;
+        if (InspirationButton is not null)
+            InspirationButton.Background = flow ? selected : clear;
+        if (SearchBox is not null)
+            SearchBox.Visibility = flow ? Visibility.Collapsed : Visibility.Visible;
         if (InspirationStrip is not null)
             InspirationStrip.Visibility = _nav == MainNav.Today ? Visibility.Visible : Visibility.Collapsed;
         if (InspirationFlowPanel is not null)
@@ -1508,6 +1550,32 @@ public sealed partial class MainPage : Page
         }
 
         AddBox.Focus(FocusState.Programmatic);
+    }
+
+    private void FocusSearchInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        if (!_settings.HasVault || _nav == MainNav.Flow || SearchBoxInput is null)
+            return;
+        SearchBoxInput.Focus(FocusState.Programmatic);
+    }
+
+    private void NavTodayAccel(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        NavToday_Click(this, new RoutedEventArgs());
+    }
+
+    private void NavDoneAccel(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        NavDone_Click(this, new RoutedEventArgs());
+    }
+
+    private void NavFlowAccel(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        NavFlow_Click(this, new RoutedEventArgs());
     }
 
     private async void PasteTasksInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -1570,11 +1638,17 @@ public sealed partial class MainPage : Page
         ShowStatus($"已添加 {lines.Count} 条任务。", InfoBarSeverity.Success);
     }
 
-    private void AddBox_KeyDown(object sender, KeyRoutedEventArgs e)
+    private async void AddBox_KeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Enter)
             return;
         e.Handled = true;
+        if (_planMode)
+        {
+            await RunPlanFromInputAsync();
+            return;
+        }
+
         AddTask();
     }
 
@@ -1590,49 +1664,18 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        var text = (AddBox.Text ?? "").Trim();
-        if (text.Length == 0)
-            return;
-
-        var parsed = QuickAddPhrase.Parse(text, DateOnly.FromDateTime(DateTime.Now), KnownCategories());
-        var title = parsed.Title.Trim();
+        var title = (AddBox.Text ?? "").Trim();
         if (title.Length == 0)
             return;
-
-        var category = parsed.Recognized && parsed.Category is not null
-            ? parsed.Category
-            : _composeCategory;
-        if (parsed.Recognized && !DayTaskCategory.IsUncategorized(parsed.Category))
-            RememberCategory(parsed.Category);
-        var date = parsed.Recognized && parsed.Date is DateOnly day ? day : _date;
-
-        if (date != _date)
-        {
-            if (!TryAppendOnDate(date, title, category))
-                return;
-            AddBox.Text = "";
-            string? savedTime = null;
-            var reminded = parsed.Reminder is TimeOnly clock
-                && TrySaveReminder(null, title, date, clock, out savedTime);
-            ShowStatus(QuickAddStatus(title, date, category, parsed, reminded, savedTime), InfoBarSeverity.Success);
-            KeepAddFocus();
-            return;
-        }
 
         var row = new TaskRow
         {
             Text = title,
-            Category = category
+            Category = _composeCategory
         };
         InsertRow(row);
         AddBox.Text = "";
         Persist();
-        string? localSaved = null;
-        var remindedLocal = parsed.Recognized
-            && parsed.Reminder is TimeOnly localClock
-            && TrySaveReminder(row, title, date, localClock, out localSaved);
-        if (parsed.Recognized)
-            ShowStatus(QuickAddStatus(title, date, category, parsed, remindedLocal, localSaved), InfoBarSeverity.Success);
         KeepAddFocus(row);
     }
 
@@ -2008,11 +2051,155 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        var paths = ManagedPaths(row);
+        var index = _rows.IndexOf(row);
+        var snapshot = row.ToTask();
+        var reminder = string.IsNullOrEmpty(row.ReminderId)
+            ? null
+            : ReminderStore.Find(ReminderStore.DefaultPath, row.ReminderId);
+        var paths = ManagedPaths(row).ToList();
+
         ForgetReminder(row);
         _rows.Remove(row);
         if (Persist())
-            ReleaseManagedFiles(paths);
+            OfferUndo("已删除任务", () => UndoDelete(snapshot, reminder, index), () => ReleaseManagedFiles(paths));
+    }
+
+    private void OfferUndo(string message, Action undo, Action? expire)
+    {
+        _undoAction = undo;
+        _undoExpire = expire;
+        ShowStatus(message, InfoBarSeverity.Informational, "撤销", DoUndo);
+
+        if (_undoTimer is null)
+        {
+            _undoTimer = DispatcherQueue.CreateTimer();
+            _undoTimer.IsRepeating = false;
+            _undoTimer.Tick += (_, _) => ExpireUndo();
+        }
+
+        _undoTimer.Stop();
+        _undoTimer.Interval = TimeSpan.FromSeconds(6);
+        _undoTimer.Start();
+    }
+
+    private void DoUndo()
+    {
+        var action = _undoAction;
+        _undoAction = null;
+        _undoExpire = null;
+        action?.Invoke();
+    }
+
+    private void ExpireUndo()
+    {
+        if (_undoAction is null)
+            return;
+        var expire = _undoExpire;
+        _undoAction = null;
+        _undoExpire = null;
+        expire?.Invoke();
+        if (!_closed)
+            StatusBar.IsOpen = false;
+    }
+
+    private void UndoDelete(DayTask task, TaskReminder? reminder, int index)
+    {
+        var row = TaskRow.From(task, _settings.VaultPath);
+        row.ReminderId = reminder?.Id;
+        row.ReminderTime = reminder?.Time;
+        _rows.Insert(Math.Clamp(index, 0, _rows.Count), row);
+
+        if (reminder is not null)
+            RestoreReminder(reminder);
+
+        Persist();
+        RebuildList();
+        UpdateStats();
+        RefreshCategoryPicker();
+        ShowStatus("已撤销删除", InfoBarSeverity.Success);
+    }
+
+    private void RestoreReminder(TaskReminder reminder)
+    {
+        try
+        {
+            var all = ReminderStore.Load(ReminderStore.DefaultPath).ToList();
+            if (all.All(item => !string.Equals(item.Id, reminder.Id, StringComparison.Ordinal)))
+            {
+                all.Add(reminder);
+                ReminderStore.Save(ReminderStore.DefaultPath, all);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("没能恢复提醒：" + ex.Message, InfoBarSeverity.Warning);
+        }
+    }
+
+    private void UndoMoveToNextDay(DayTask task, TaskReminder? reminder, int index)
+    {
+        var row = TaskRow.From(task, _settings.VaultPath);
+        row.ReminderId = reminder?.Id;
+        row.ReminderTime = reminder?.Time;
+        _rows.Insert(Math.Clamp(index, 0, _rows.Count), row);
+
+        if (!Persist())
+            return;
+
+        // Remove the copy we wrote to tomorrow.
+        var next = _date.AddDays(1);
+        try
+        {
+            var snapshot = DailyNoteStore.Read(_settings, next);
+            var kept = snapshot.Tasks.Where(t =>
+                !(string.Equals((t.Text ?? "").Trim(), (task.Text ?? "").Trim(), StringComparison.Ordinal)
+                  && DayTaskCategory.Normalize(t.Category) == DayTaskCategory.Normalize(task.Category))).ToList();
+            DailyNoteStore.Write(_settings, next, kept);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("已移回今天，但明天那份没能清掉：" + ex.Message, InfoBarSeverity.Warning);
+        }
+
+        if (reminder is not null && ReminderSchedule.TryParseClock(reminder.Time, out var clock))
+        {
+            try
+            {
+                ReminderStore.SetForTask(ReminderStore.DefaultPath, reminder.Id, reminder.TaskText, _date, clock);
+            }
+            catch (Exception ex)
+            {
+                ShowStatus("提醒没能改回今天：" + ex.Message, InfoBarSeverity.Warning);
+            }
+        }
+
+        RebuildList();
+        UpdateStats();
+        RefreshCategoryPicker();
+        ShowStatus("已撤销挪动", InfoBarSeverity.Success);
+    }
+
+    private void UndoBring(TaskRow added)
+    {
+        if (!_rows.Remove(added))
+            return;
+        Persist();
+        RebuildList();
+        UpdateStats();
+        RefreshOverdue();
+        ShowStatus("已撤销带入", InfoBarSeverity.Success);
+    }
+
+    private void UndoUncheck(TaskRow row)
+    {
+        if (Suppressed || row.IsDone)
+            return;
+        row.IsDone = true;
+        if (_nav == MainNav.Completed)
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, RebuildList);
+        UpdateStats();
+        Persist();
+        ShowStatus("已恢复完成", InfoBarSeverity.Success);
     }
 
     private void TaskDoneChanged(object sender, RoutedEventArgs e)
@@ -2045,6 +2232,8 @@ public sealed partial class MainPage : Page
         Persist();
         if (done)
             PlayMoment(CompletionFeedback.Detect(before, DoneSnapshots()));
+        else if (_nav == MainNav.Completed)
+            OfferUndo("已取消完成", () => UndoUncheck(row), null);
     }
 
     private void TaskText_GotFocus(object sender, RoutedEventArgs e) => _textFocus++;
@@ -2518,10 +2707,11 @@ public sealed partial class MainPage : Page
                     OverdueIdentity.AttachmentKey(row.Attachments.Select(chip => chip.ToAttachment())),
                     OverdueIdentity.AttachmentKey(item.Attachments),
                     StringComparison.OrdinalIgnoreCase)));
+        TaskRow? added = null;
         if (!exists)
         {
             var attachments = AttachmentVault.CopyIntoDay(_settings.VaultPath, _date, item.Attachments);
-            InsertRow(TaskRow.From(new DayTask
+            added = TaskRow.From(new DayTask
             {
                 Text = item.Text,
                 Category = item.Category,
@@ -2530,7 +2720,8 @@ public sealed partial class MainPage : Page
                 DoneMark = item.DoneMark,
                 IsDone = false,
                 Attachments = attachments.ToList()
-            }, _settings.VaultPath));
+            }, _settings.VaultPath);
+            InsertRow(added);
         }
 
         if (!persist)
@@ -2541,6 +2732,8 @@ public sealed partial class MainPage : Page
             RememberHandled(new[] { overdue.Item });
         UpdateStats();
         RefreshOverdue();
+        if (added is not null)
+            OfferUndo("已带入今日", () => UndoBring(added), null);
     }
 
     private void Pin_Click(object sender, RoutedEventArgs e)
@@ -2611,11 +2804,21 @@ public sealed partial class MainPage : Page
     }
 
 
-    private async void Plan_Click(object sender, RoutedEventArgs e)
+    private void Plan_Click(object sender, RoutedEventArgs e)
+    {
+        if (_planMode)
+            ExitPlanMode();
+        else
+            EnterPlanMode();
+    }
+
+    private void ExitPlanMode_Click(object sender, RoutedEventArgs e) => ExitPlanMode();
+
+    private void EnterPlanMode()
     {
         if (!_settings.HasVault)
         {
-            ShowStatus("先连接 Obsidian 库，再生成计划。", InfoBarSeverity.Warning);
+            ShowStatus("先连接 Obsidian 库，再用 AI 生成计划。", InfoBarSeverity.Warning);
             return;
         }
 
@@ -2625,28 +2828,37 @@ public sealed partial class MainPage : Page
             return;
         }
 
+        _planMode = true;
+        PlanModeChip.Visibility = Visibility.Visible;
+        AddBox.Text = "";
+        AddBox.PlaceholderText = "描述你想做的计划，回车让 AI 拆成任务…";
+        AddBox.Focus(FocusState.Programmatic);
+    }
+
+    private void ExitPlanMode()
+    {
+        _planMode = false;
+        PlanModeChip.Visibility = Visibility.Collapsed;
+        AddBox.PlaceholderText = "输入任务，回车添加";
+        AddBox.Focus(FocusState.Programmatic);
+    }
+
+    private async Task RunPlanFromInputAsync()
+    {
+        if (_planBusy || !_settings.HasVault || !_settings.IsApiConfigured)
+            return;
+
         if (_pendingExternal)
         {
             ShowStatus("先处理笔记的外部更新，再生成计划。", InfoBarSeverity.Warning);
             return;
         }
 
-        var inputBox = SoftUi.CreateDialogTextBox(
-            "例如：今天下午写周报，晚上健身30分钟；明天把设置页改完",
-            acceptsReturn: true,
-            minHeight: 120,
-            maxHeight: 220);
-        var inputDialog = SoftUi.CreateDialog(XamlRoot, "用自然语言生成计划", inputBox, "生成预览");
-        if (await inputDialog.ShowAsync() != ContentDialogResult.Primary)
-            return;
-
-        var text = (inputBox.Text ?? "").Trim();
+        var text = (AddBox.Text ?? "").Trim();
         if (text.Length == 0)
-        {
-            ShowStatus("先写几句想做的事，再生成计划。", InfoBarSeverity.Warning);
             return;
-        }
 
+        _planBusy = true;
         SetAiBusy(true);
         ShowStatus("正在用 AI 拆解计划…", InfoBarSeverity.Informational);
 
@@ -2666,6 +2878,7 @@ public sealed partial class MainPage : Page
         }
         finally
         {
+            _planBusy = false;
             if (!_closed)
                 SetAiBusy(false);
         }
@@ -2711,7 +2924,6 @@ public sealed partial class MainPage : Page
         try
         {
             CommitFocusedText();
-            var today = DateOnly.FromDateTime(DateTime.Now);
             var touchesToday = result.Tasks.Any(t => t.Date == _date);
 
             // Persist current day UI first if we will rewrite the viewed day from disk after apply.
@@ -2732,7 +2944,8 @@ public sealed partial class MainPage : Page
                 ? $"已写入 {added} 条任务到今天。"
                 : $"已写入 {added} 条任务（含 {otherDays} 个其它日期的笔记）。";
             ShowStatus(msg, InfoBarSeverity.Success);
-            _ = today;
+            AddBox.Text = "";
+            ExitPlanMode();
         }
         catch (Exception ex)
         {
@@ -2816,12 +3029,82 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            var current = typeof(App).Assembly.GetName().Version ?? new Version(1, 0, 0);
+            var info = await UpdateChecker.CheckAsync(current, CancellationToken.None);
+            if (info is null || _closed)
+                return;
+
+            ShowStatus(
+                $"发现新版本 v{info.Version}，点「更新」下载并安装。",
+                InfoBarSeverity.Informational,
+                "更新",
+                () => _ = RunUpdateAsync(info));
+        }
+        catch
+        {
+            // Update checks are best-effort.
+        }
+    }
+
+    private async Task RunUpdateAsync(UpdateInfo info)
+    {
+        try
+        {
+            ShowStatus($"正在下载 v{info.Version} 安装包…", InfoBarSeverity.Informational);
+            var path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                $"DayList-Setup-{info.Version}.exe");
+
+            using (var response = await Http.GetAsync(info.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
+            {
+                response.EnsureSuccessStatusCode();
+                await using var target = System.IO.File.Create(path);
+                await response.Content.CopyToAsync(target);
+            }
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            });
+
+            // Let the installer take over; it closes the old process if needed.
+            await Task.Delay(800);
+            Application.Current.Exit();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("更新失败：" + ex.Message + "，已打开下载页。", InfoBarSeverity.Warning);
+            TryOpenPage(info.PageUrl);
+        }
+    }
+
+    private static void TryOpenPage(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Opening the release page is best-effort.
+        }
+    }
+
     private void SetAiBusy(bool busy)
     {
         if (ReportSidebarButton is not null)
             ReportSidebarButton.IsEnabled = !busy;
-        if (PlanSidebarButton is not null)
-            PlanSidebarButton.IsEnabled = !busy;
+        if (PlanButton is not null)
+            PlanButton.IsEnabled = !busy;
         if (ReportRing is not null)
         {
             ReportRing.IsActive = busy;
@@ -2946,64 +3229,14 @@ public sealed partial class MainPage : Page
 
     private void NoteVaultWrite(WriteResult result)
     {
-        _syncError = false;
-        if (result.Wrote)
-            _lastSyncAt = DateTimeOffset.Now;
-        RenderSyncCapsule();
-        if (result.Wrote)
-            EnsureSyncClock();
     }
 
     private void NoteSyncSuccess()
     {
-        _syncError = false;
-        _lastSyncAt = DateTimeOffset.Now;
-        RenderSyncCapsule();
-        EnsureSyncClock();
     }
 
     private void NoteSyncFailure()
     {
-        _syncError = true;
-        RenderSyncCapsule();
-    }
-
-    private void RenderSyncCapsule()
-    {
-        if (SyncCapsule is null || SyncLabel is null || SyncDot is null)
-            return;
-        if (!_settings.HasVault)
-        {
-            SyncCapsule.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        SyncCapsule.Visibility = Visibility.Visible;
-        var phase = _syncError
-            ? SyncPhase.Error
-            : _lastSyncAt is null ? SyncPhase.Idle : SyncPhase.Saved;
-        SyncLabel.Text = SyncStatusText.Format(phase, _lastSyncAt, DateTimeOffset.Now);
-        SyncDot.Fill = new SolidColorBrush(phase switch
-        {
-            SyncPhase.Error => Color.FromArgb(255, 0xC4, 0x6A, 0x4A),
-            SyncPhase.Saved => Color.FromArgb(255, 0x6B, 0xB5, 0x6C),
-            _ => Color.FromArgb(255, 0xC4, 0xB0, 0x9A)
-        });
-    }
-
-    private void EnsureSyncClock()
-    {
-        if (_syncClock is not null)
-            return;
-        _syncClock = DispatcherQueue.CreateTimer();
-        _syncClock.Interval = TimeSpan.FromSeconds(15);
-        _syncClock.IsRepeating = true;
-        _syncClock.Tick += (_, _) =>
-        {
-            if (!_closed)
-                RenderSyncCapsule();
-        };
-        _syncClock.Start();
     }
 
     private void EnsureTemplateButtons()
@@ -3110,7 +3343,7 @@ public sealed partial class MainPage : Page
         }
 
         // Confetti only for the day. A finished category keeps the banner alone.
-        var confetti = ConfettiChoreography.ForDay(moment);
+        var confetti = _settings.ConfettiEnabled && ConfettiChoreography.ForDay(moment);
 
         // Checked is still on the stack. The banner was Collapsed, and the
         // day path also used to storyboard a ScaleTransform on SideProgressRing.
@@ -3735,11 +3968,10 @@ public sealed partial class MainPage : Page
     private static void SetRowHoverActions(Grid grid, bool shown)
     {
         var actions = FindTagged(grid, "rowHoverActions");
-        var status = FindTagged(grid, "rowStatus");
         if (actions is not null)
             actions.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
-        if (status is not null)
-            status.Visibility = shown ? Visibility.Collapsed : Visibility.Visible;
+        // Status (reminder time / attachment mark) stays visible; the hover
+        // actions appear alongside it instead of replacing it.
     }
 
     private static FrameworkElement? FindTagged(DependencyObject root, string tag)
@@ -3860,7 +4092,7 @@ public sealed partial class MainPage : Page
                     Text = "还没有灵感。",
                     FontSize = 12,
                     TextWrapping = TextWrapping.Wrap,
-                    Foreground = new SolidColorBrush(Color.FromArgb(255, 0x7A, 0x6F, 0x62))
+                    Foreground = ThemeColors.Brush(ThemeColors.Muted)
                 });
                 return;
             }
@@ -3877,7 +4109,7 @@ public sealed partial class MainPage : Page
                     Text = string.IsNullOrEmpty(draft.TimeLabel) ? "·" : draft.TimeLabel,
                     FontSize = 12,
                     VerticalAlignment = VerticalAlignment.Center,
-                    Foreground = new SolidColorBrush(Color.FromArgb(255, 0x7A, 0x6F, 0x62))
+                    Foreground = ThemeColors.Brush(ThemeColors.Muted)
                 };
                 var box = SoftUi.CreateDialogTextBox(acceptsReturn: true, minHeight: 36, maxHeight: 96);
                 box.Text = draft.Text;
@@ -4409,6 +4641,15 @@ public sealed partial class MainPage : Page
         RenderFocus();
     }
 
+    private void FocusExpand_Click(object sender, RoutedEventArgs e)
+    {
+        if (FocusPresetsRow is null || FocusExpandGlyph is null)
+            return;
+        var expanded = FocusPresetsRow.Visibility == Visibility.Visible;
+        FocusPresetsRow.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        FocusExpandGlyph.Glyph = expanded ? "\uE70D" : "\uE70E";
+    }
+
     private void FocusPreset_Click(object sender, RoutedEventArgs e)
     {
         if (_focus.Phase != FocusPhase.Idle)
@@ -4545,6 +4786,20 @@ public sealed partial class MainPage : Page
         PaintPreset(FocusPreset25, 25, 5);
         PaintPreset(FocusPreset15, 15, 3);
         PaintPreset(FocusPreset50, 50, 10);
+
+        if (FocusProgressBar is not null)
+        {
+            var running = _focus.IsRunning;
+            FocusProgressBar.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+            if (running)
+            {
+                var total = _focus.Phase == FocusPhase.Focus
+                    ? _focus.Duration.FocusSeconds
+                    : _focus.Duration.BreakSeconds;
+                var elapsed = Math.Max(0, total - _focus.RemainingSeconds);
+                FocusProgressBar.Value = total <= 0 ? 0 : Math.Min(1, (double)elapsed / total);
+            }
+        }
     }
 
     private void PaintPreset(Button? button, int focus, int rest)

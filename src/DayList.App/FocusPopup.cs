@@ -33,10 +33,10 @@ internal sealed class FocusPopup : Window
         Title = title;
         SystemBackdrop = null;
 
-        var ink = Brush(0xFF, 0x3D, 0x34, 0x29);
-        var muted = Brush(0xFF, 0x7A, 0x6F, 0x62);
-        var cream = Brush(0xFF, 0xF7, 0xF2, 0xEA);
-        var line = Brush(0xFF, 0xE4, 0xD8, 0xC8);
+        var ink = ThemeColors.Brush(ThemeColors.Ink);
+        var muted = ThemeColors.Brush(ThemeColors.Muted);
+        var cream = ThemeColors.Brush(ThemeColors.Cream);
+        var line = ThemeColors.Brush(ThemeColors.Line);
 
         var stack = new StackPanel { Spacing = 8 };
         stack.Children.Add(new TextBlock
