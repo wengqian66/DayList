@@ -51,19 +51,43 @@ internal sealed class UpdatePopup : Window
         buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         buttons.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        _ignoreButton = new Button { Content = "忽略此次更新", HorizontalAlignment = HorizontalAlignment.Left };
+        // Warm buttons: the default AccentButtonStyle is a saturated system blue that
+        // clashes with the cream theme, so the primary action uses the app's amber ink.
+        var closedStyle = Application.Current.Resources.TryGetValue("SoftDialogCloseButtonStyle", out var closeValue)
+            ? closeValue as Style
+            : null;
+        var warm = Application.Current.Resources.TryGetValue("SoftAmberInkBrush", out var warmValue)
+            ? warmValue as Brush
+            : null;
+
+        _ignoreButton = new Button
+        {
+            Content = "忽略此次更新",
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+            BorderThickness = new Thickness(0),
+            Foreground = muted,
+            FontSize = 12,
+            Padding = new Thickness(6, 6, 6, 6),
+            CornerRadius = new CornerRadius(8)
+        };
         _ignoreButton.Click += (_, _) =>
         {
             _onIgnore(_info.Version);
             Close();
         };
 
-        _laterButton = new Button { Content = "稍后" };
+        _laterButton = new Button { Content = "稍后", Style = closedStyle };
         _laterButton.Click += (_, _) => Close();
 
-        _updateButton = new Button { Content = "立即更新" };
-        if (Application.Current.Resources.TryGetValue("AccentButtonStyle", out var accent) && accent is Style accentStyle)
-            _updateButton.Style = accentStyle;
+        _updateButton = new Button
+        {
+            Content = "立即更新",
+            Style = closedStyle,
+            Background = warm,
+            Foreground = ThemeColors.Brush(ThemeColors.Cream),
+            BorderThickness = new Thickness(0)
+        };
         _updateButton.Click += async (_, _) => await DownloadAndRunAsync();
 
         var right = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
