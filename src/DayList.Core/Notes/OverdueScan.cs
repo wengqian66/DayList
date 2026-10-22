@@ -45,7 +45,7 @@ public static class OverdueIdentity
 
     public static string IdentityText(string? text, string? attachmentKey)
     {
-        var trimmed = (text ?? "").Trim();
+        var trimmed = CarryMarker.Visible(text);
         if (trimmed.Length > 0)
             return trimmed;
         return attachmentKey ?? "";
@@ -53,7 +53,7 @@ public static class OverdueIdentity
 
     public static string Label(OverdueTaskItem item)
     {
-        var text = (item.Text ?? "").Trim();
+        var text = CarryMarker.Visible(item.Text);
         if (text.Length > 0)
             return text;
 
@@ -76,7 +76,8 @@ public static class OverdueScan
     public static IReadOnlyList<OverdueTaskItem> CollectOpenBefore(
         AppSettings settings,
         DateOnly today,
-        int lookbackDays = 31)
+        int lookbackDays = 31,
+        CarryLinkTable? links = null)
     {
         if (!settings.HasVault)
             return Array.Empty<OverdueTaskItem>();
@@ -113,7 +114,8 @@ public static class OverdueScan
                         day,
                         text,
                         category,
-                        OverdueIdentity.AttachmentKey(attachments)));
+                        OverdueIdentity.AttachmentKey(attachments),
+                        task.CarryId));
                     continue;
                 }
 
@@ -131,6 +133,6 @@ public static class OverdueScan
         }
 
         // Source notes stay unchecked after a task is copied forward and ticked on a later day.
-        return CarryOverOffer.StillUnfinished(open, finished);
+        return CarryOverOffer.StillUnfinished(open, finished, links);
     }
 }

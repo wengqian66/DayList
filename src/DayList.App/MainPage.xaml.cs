@@ -62,6 +62,8 @@ public sealed partial class MainPage : Page
     private bool _sectionCommitPending;
     private bool _overdueExpanded;
     private CarryOverMemory _carryMemory = new();
+    private CarryLinkTable _carryLinks = new();
+    private readonly List<CarryLink> _pendingCarryLinks = new();
     private List<OverdueTaskItem> _pendingOverdue = new();
     private string _overdueFilter = CarryOverOffer.AllLabel;
     private string _searchText = "";
@@ -205,6 +207,15 @@ public sealed partial class MainPage : Page
             _carryMemory = new CarryOverMemory();
         }
 
+        try
+        {
+            _carryLinks = CarryLinkStore.Load();
+        }
+        catch
+        {
+            _carryLinks = new CarryLinkTable();
+        }
+
         PinButton.IsChecked = _settings.AlwaysOnTop;
         SyncPinChrome();
         EnsureTemplateButtons();
@@ -313,6 +324,7 @@ public sealed partial class MainPage : Page
 
     private void Apply(DailyNoteSnapshot snapshot)
     {
+        _pendingCarryLinks.Clear();
         _suspendRowRebuild = true;
         try
         {
@@ -433,24 +445,21 @@ public sealed partial class MainPage : Page
         IReadOnlyList<OverdueTaskItem> open;
         try
         {
-            open = OverdueScan.CollectOpenBefore(_settings, today);
+            open = OverdueScan.CollectOpenBefore(_settings, today, links: LinksInUse());
         }
         catch
         {
             open = Array.Empty<OverdueTaskItem>();
         }
 
-        var todayTasks = _rows.Select(row => new TodayTaskRef(
-            row.Text,
-            row.Category,
-            OverdueIdentity.AttachmentKey(row.Attachments.Select(chip => chip.ToAttachment())))).ToList();
+        var todayTasks = _rows.Select(TodayRef).ToList();
         var absorbed = open.Where(item => CarryOverOffer.AlreadyOnToday(item, todayTasks)).ToList();
         // Only remember tasks that are actually in the note. A failed write must not
         // dismiss the banner across the next launch.
         if (_noteMatchesDisk && absorbed.Count > 0)
             RememberHandled(absorbed);
 
-        _pendingOverdue = CarryOverOffer.Pending(open, todayTasks, _carryMemory, today).ToList();
+        _pendingOverdue = CarryOverOffer.Pending(open, todayTasks, _carryMemory, today, LinksInUse()).ToList();
         if (!string.Equals(_overdueFilter, CarryOverOffer.AllLabel, StringComparison.Ordinal)
             && CarryOverOffer.Filter(_pendingOverdue, _overdueFilter).Count == 0)
         {
@@ -569,6 +578,12 @@ public sealed partial class MainPage : Page
         RefreshOverdue();
     }
 
+    private TodayTaskRef TodayRef(TaskRow row) => new(
+        row.Text,
+        row.Category,
+        OverdueIdentity.AttachmentKey(row.Attachments.Select(chip => chip.ToAttachment())),
+        row.CarryId);
+
     private void RememberHandled(IEnumerable<OverdueTaskItem> items)
     {
         var today = DateOnly.FromDateTime(DateTime.Now);
@@ -584,6 +599,65 @@ public sealed partial class MainPage : Page
         catch (Exception ex)
         {
             ShowStatus("没能记下已处理的未完成项：" + ex.Message, InfoBarSeverity.Warning);
+        }
+    }
+
+    private void StageCarryLink(CarryLink link) => _pendingCarryLinks.Add(link);
+
+    private CarryLinkTable LinksInUse()
+    {
+        if (_pendingCarryLinks.Count == 0)
+            return _carryLinks;
+
+        var combined = new CarryLinkTable
+        {
+            Links = new List<CarryLink>(_carryLinks.Links ?? new List<CarryLink>())
+        };
+        foreach (var link in _pendingCarryLinks)
+            combined.Remember(link);
+        return combined;
+    }
+
+    private void CommitPendingLinks()
+    {
+        if (_pendingCarryLinks.Count == 0)
+            return;
+
+        var live = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var row in _rows)
+        {
+            var id = CarryMarker.Normalize(row.CarryId);
+            if (id.Length > 0)
+                live.Add(id);
+        }
+
+        _pendingCarryLinks.RemoveAll(link => !live.Contains(CarryMarker.Normalize(link.CarryId)));
+        if (_pendingCarryLinks.Count == 0)
+            return;
+
+        foreach (var link in _pendingCarryLinks)
+            _carryLinks.Remember(link);
+
+        try
+        {
+            CarryLinkStore.Save(_carryLinks);
+            _pendingCarryLinks.Clear();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("没能记下带入关系：" + ex.Message, InfoBarSeverity.Warning);
+        }
+    }
+
+    private void SaveCarryLinks()
+    {
+        try
+        {
+            CarryLinkStore.Save(_carryLinks);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("没能记下带入关系：" + ex.Message, InfoBarSeverity.Warning);
         }
     }
 
@@ -2181,9 +2255,19 @@ public sealed partial class MainPage : Page
 
     private void UndoBring(TaskRow added)
     {
+        var carryId = added.CarryId;
         if (!_rows.Remove(added))
             return;
-        Persist();
+        if (!string.IsNullOrEmpty(carryId))
+        {
+            var id = CarryMarker.Normalize(carryId);
+            _pendingCarryLinks.RemoveAll(link =>
+                string.Equals(CarryMarker.Normalize(link.CarryId), id, StringComparison.Ordinal));
+        }
+
+        var wrote = Persist();
+        if (wrote && !string.IsNullOrEmpty(carryId) && _carryLinks.Remove(carryId))
+            SaveCarryLinks();
         RebuildList();
         UpdateStats();
         RefreshOverdue();
@@ -2698,18 +2782,11 @@ public sealed partial class MainPage : Page
         }
 
         var item = overdue.Item;
-        var itemText = (item.Text ?? "").Trim();
-        var exists = _rows.Any(row =>
-            string.Equals(row.Text.Trim(), itemText, StringComparison.Ordinal)
-            && DayTaskCategory.Normalize(row.Category) == DayTaskCategory.Normalize(item.Category)
-            && (itemText.Length > 0
-                || string.Equals(
-                    OverdueIdentity.AttachmentKey(row.Attachments.Select(chip => chip.ToAttachment())),
-                    OverdueIdentity.AttachmentKey(item.Attachments),
-                    StringComparison.OrdinalIgnoreCase)));
+        var todayTasks = _rows.Select(TodayRef).ToList();
         TaskRow? added = null;
-        if (!exists)
+        if (!CarryOverOffer.AlreadyOnToday(item, todayTasks, LinksInUse()))
         {
+            var (carryId, link) = CarryLineage.Stamp(item, _date, LinksInUse());
             var attachments = AttachmentVault.CopyIntoDay(_settings.VaultPath, _date, item.Attachments);
             added = TaskRow.From(new DayTask
             {
@@ -2719,9 +2796,11 @@ public sealed partial class MainPage : Page
                 Bullet = item.Bullet,
                 DoneMark = item.DoneMark,
                 IsDone = false,
+                CarryId = carryId,
                 Attachments = attachments.ToList()
             }, _settings.VaultPath);
             InsertRow(added);
+            StageCarryLink(link);
         }
 
         if (!persist)
@@ -3245,6 +3324,7 @@ public sealed partial class MainPage : Page
             RefreshSectionTitleChrome();
             _noteMatchesDisk = true;
             NoteVaultWrite(result);
+            CommitPendingLinks();
             return true;
         }
         catch (Exception ex)

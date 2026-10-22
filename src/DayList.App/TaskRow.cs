@@ -89,6 +89,8 @@ public sealed class TaskRow : INotifyPropertyChanged
 
     public char DoneMark { get; set; } = 'x';
 
+    public string CarryId { get; set; } = "";
+
     public string? RawLine { get; set; }
 
     private string? _reminderId;
@@ -171,6 +173,7 @@ public sealed class TaskRow : INotifyPropertyChanged
             Indent = task.Indent,
             Bullet = task.Bullet,
             DoneMark = task.DoneMark,
+            CarryId = task.CarryId,
             RawLine = task.RawLine,
             OriginIndex = task.OriginIndex
         };
@@ -199,6 +202,7 @@ public sealed class TaskRow : INotifyPropertyChanged
         Indent = Indent,
         Bullet = Bullet,
         DoneMark = DoneMark,
+        CarryId = CarryId,
         RawLine = RawLine,
         OriginIndex = OriginIndex,
         Attachments = Attachments.Select(item => item.ToAttachment()).ToList()

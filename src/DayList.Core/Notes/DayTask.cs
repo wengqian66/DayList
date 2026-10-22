@@ -45,6 +45,9 @@ public sealed class DayTask
 
     public char DoneMark { get; set; } = 'x';
 
+    /// <summary>Trailing <c>^dl-xxxxxxxx</c> from 「带入今日」. Empty when the line has none.</summary>
+    public string CarryId { get; set; } = "";
+
     public string? RawLine { get; set; }
 
     public List<TaskAttachment> Attachments { get; set; } = new();
@@ -91,7 +94,8 @@ public sealed class DayTask
         }
 
         var mark = match.Groups["mark"].Value[0];
-        var (text, attachments) = TaskAttachmentSyntax.Split(match.Groups["text"].Value);
+        var (withoutMarker, carryId) = CarryMarker.Split(match.Groups["text"].Value);
+        var (text, attachments) = TaskAttachmentSyntax.Split(withoutMarker);
         task = new DayTask
         {
             Indent = match.Groups["indent"].Value,
@@ -99,6 +103,7 @@ public sealed class DayTask
             IsDone = mark is 'x' or 'X',
             DoneMark = mark == 'X' ? 'X' : 'x',
             Text = text,
+            CarryId = carryId,
             Attachments = attachments,
             RawLine = line
         };
@@ -113,6 +118,7 @@ public sealed class DayTask
         Indent = Indent,
         Bullet = Bullet,
         DoneMark = DoneMark,
+        CarryId = CarryId,
         RawLine = RawLine,
         OriginIndex = OriginIndex,
         Attachments = Attachments.Select(item => item.Copy()).ToList()
@@ -126,13 +132,15 @@ public sealed class DayTask
             && parsed.Text == Text
             && parsed.Indent == Indent
             && parsed.Bullet == Bullet
+            && string.Equals(parsed.CarryId, CarryMarker.Normalize(CarryId), StringComparison.Ordinal)
             && TaskAttachment.SameSequence(parsed.Attachments, Attachments))
         {
             return RawLine;
         }
 
         var mark = !IsDone ? " " : DoneMark == 'X' ? "X" : "x";
-        return $"{Indent}{Bullet} [{mark}] {TaskAttachmentSyntax.Compose(Text, Attachments)}";
+        var body = CarryMarker.Append(TaskAttachmentSyntax.Compose(Text, Attachments), CarryId);
+        return $"{Indent}{Bullet} [{mark}] {body}";
     }
 
     public static bool SameList(IReadOnlyList<DayTask> left, IReadOnlyList<DayTask> right)
@@ -145,6 +153,10 @@ public sealed class DayTask
             if (left[i].IsDone != right[i].IsDone
                 || left[i].Bullet != right[i].Bullet
                 || !string.Equals(left[i].Text, right[i].Text, StringComparison.Ordinal)
+                || !string.Equals(
+                    CarryMarker.Normalize(left[i].CarryId),
+                    CarryMarker.Normalize(right[i].CarryId),
+                    StringComparison.Ordinal)
                 || !string.Equals(left[i].Indent, right[i].Indent, StringComparison.Ordinal)
                 || !string.Equals(
                     DayTaskCategory.Normalize(left[i].Category),
