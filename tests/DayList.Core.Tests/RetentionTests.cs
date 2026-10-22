@@ -251,33 +251,56 @@ public class RetentionTests
     [Fact]
     public void StillUnfinished_DropsAnEditedCopyCheckedOffOnALaterDay()
     {
-        var source = new DateOnly(2026, 10, 20);
+        var sourceDay = new DateOnly(2026, 10, 20);
         var finishedOn = new DateOnly(2026, 10, 21);
+        var session = Open("会话知识库接口返回具体的session名称，可参考会话列表名称的获取方式", "工作", sourceDay);
+        var batch = Open("批量删除历史会话（http://localhost:3001/api/agent-platform/workspace/files?agent_id=149&session_id=cf9017ff-e9c4-49d8-9faf-d8b290b7c043&path=output%2F_part4.md）支持传多个agent_id和session_id？", "工作", sourceDay);
+        var open = new[] { session, batch };
 
-        var open = new[]
-        {
-            Open("会话知识库接口返回具体的session名称，可参考会话列表名称的获取方式", "工作", source),
-            Open("批量删除历史会话（http://localhost:3001/api/agent-platform/workspace/files?agent_id=149&session_id=cf9017ff-e9c4-49d8-9faf-d8b290b7c043&path=output%2F_part4.md）支持传多个agent_id和session_id？", "工作", source)
-        };
+        var (sessionId, sessionLink) = CarryLineage.Stamp(session, finishedOn);
+        var (batchId, batchLink) = CarryLineage.Stamp(batch, finishedOn);
+        var links = new CarryLinkTable();
+        links.Remember(sessionLink);
+        links.Remember(batchLink);
+
         var finished = new[]
         {
-            new FinishedTaskRef(finishedOn, "会话知识库接口返回具体的session名称，可参考会话列表名称的获取方式（贾老师那边得新增接口）", "工作"),
-            new FinishedTaskRef(finishedOn, "批量删除历史会话文件（http://localhost:3001/api/agent-platform/workspace/files?agent_id=149&session_id=cf9017ff-e9c4-49d8-9faf-d8b290b7c043&path=output%2F_part4.md）是否支持传多个agent_id和session_id？", "工作")
+            new FinishedTaskRef(finishedOn, "会话知识库接口返回具体的session名称，可参考会话列表名称的获取方式（贾老师那边得新增接口）", "工作", "", sessionId),
+            new FinishedTaskRef(finishedOn, "批量删除历史会话文件（http://localhost:3001/api/agent-platform/workspace/files?agent_id=149&session_id=cf9017ff-e9c4-49d8-9faf-d8b290b7c043&path=output%2F_part4.md）是否支持传多个agent_id和session_id？", "工作", "", batchId)
         };
 
-        Assert.Empty(CarryOverOffer.StillUnfinished(open, finished));
+        Assert.Equal(2, CarryOverOffer.StillUnfinished(open, finished).Count);
+        Assert.Empty(CarryOverOffer.StillUnfinished(open, finished, links));
     }
 
     [Fact]
     public void StillUnfinished_KeepsUnrelatedShortTasks()
     {
-        var source = new DateOnly(2026, 10, 20);
-        var finishedOn = new DateOnly(2026, 10, 21);
+        var source = new DateOnly(2026, 10, 15);
+        var finishedOn = new DateOnly(2026, 10, 16);
+        var open = new[]
+        {
+            Open("买", "生活", source),
+            Open("写周报", "工作", source),
+            Open("整理会议室", "工作", source),
+            Open("买两盒牛奶", "生活", source),
+            Open("回邮件", "工作", source)
+        };
+        var finished = new[]
+        {
+            new FinishedTaskRef(finishedOn, "卖", "生活"),
+            new FinishedTaskRef(finishedOn, "写日报", "工作"),
+            new FinishedTaskRef(finishedOn, "整理会议", "工作"),
+            new FinishedTaskRef(finishedOn, "买两盒牛乃", "生活"),
+            new FinishedTaskRef(finishedOn, "回复邮件", "工作")
+        };
 
-        var open = new[] { Open("写周报", "工作", source) };
-        var finished = new[] { new FinishedTaskRef(finishedOn, "写日报", "工作") };
+        var pending = CarryOverOffer.StillUnfinished(open, finished);
 
-        Assert.Single(CarryOverOffer.StillUnfinished(open, finished));
+        Assert.Equal(5, pending.Count);
+        Assert.Empty(CarryOverOffer.StillUnfinished(
+            new[] { Open("买", "生活", source) },
+            new[] { new FinishedTaskRef(finishedOn, "买", "生活") }));
     }
 
     private static OverdueTaskItem ImageOnly(string file, string category = "") =>
@@ -344,6 +367,237 @@ public class RetentionTests
             if (File.Exists(path))
                 File.Delete(path);
         }
+    }
+
+    [Fact]
+    public void StillUnfinished_LineageDoesNotRetireADifferentDayOrCategory()
+    {
+        var sourceDay = new DateOnly(2026, 10, 15);
+        var earlierDay = new DateOnly(2026, 10, 14);
+        var finishedOn = new DateOnly(2026, 10, 16);
+        var source = Open("买菜", "生活", sourceDay);
+        var earlierSameWords = Open("买菜", "生活", earlierDay);
+        var otherCategory = Open("买菜", "工作", sourceDay);
+        var unrelated = Open("洗碗", "生活", sourceDay);
+        var open = new[] { source, earlierSameWords, otherCategory, unrelated };
+
+        var (carryId, link) = CarryLineage.Stamp(source, finishedOn);
+        var finished = new[]
+        {
+            new FinishedTaskRef(finishedOn, "去超市买菜", "生活", "", carryId)
+        };
+
+        Assert.Equal(4, CarryOverOffer.StillUnfinished(open, finished).Count);
+
+        var links = new CarryLinkTable();
+        links.Remember(link);
+        var pending = CarryOverOffer.StillUnfinished(open, finished, links);
+
+        Assert.DoesNotContain(pending, item => item.Date == sourceDay && item.Category == "生活" && item.Text == "买菜");
+        Assert.Contains(pending, item => item.Date == earlierDay && item.Text == "买菜");
+        Assert.Contains(pending, item => item.Category == "工作" && item.Text == "买菜");
+        Assert.Contains(pending, item => item.Text == "洗碗");
+    }
+
+    [Fact]
+    public void StillUnfinished_AttachmentOnly_RetiresThroughCarryId()
+    {
+        var finishedOn = new DateOnly(2026, 10, 16);
+        var image = ImageOnly("only.png");
+        var other = ImageOnly("other.png");
+        var (carryId, link) = CarryLineage.Stamp(image, finishedOn);
+        var links = new CarryLinkTable();
+        links.Remember(link);
+
+        var brought = new DayTask
+        {
+            Text = "补充说明",
+            Category = "",
+            IsDone = true,
+            CarryId = carryId,
+            Attachments = image.Attachments.Select(item => item.Copy()).ToList()
+        };
+        var line = brought.ToMarkdown();
+        Assert.EndsWith("^" + carryId, line);
+        Assert.True(DayTask.TryParseLine(line, out var parsed));
+        Assert.Equal("补充说明", parsed.Text);
+        Assert.Equal(carryId, parsed.CarryId);
+        Assert.DoesNotContain("^" + carryId, parsed.Text);
+        Assert.Single(parsed.Attachments);
+
+        var finished = new FinishedTaskRef(
+            finishedOn,
+            parsed.Text,
+            "",
+            OverdueIdentity.AttachmentKey(parsed.Attachments),
+            parsed.CarryId);
+        Assert.Empty(CarryOverOffer.StillUnfinished(new[] { image }, new[] { finished }, links));
+        Assert.Single(CarryOverOffer.StillUnfinished(new[] { other }, new[] { finished }, links));
+        Assert.Single(CarryOverOffer.StillUnfinished(new[] { image }, new[] { finished }));
+
+        var today = new TodayTaskRef("补充说明", "", OverdueIdentity.AttachmentKey(parsed.Attachments), carryId);
+        Assert.True(CarryOverOffer.AlreadyOnToday(image, new[] { today }, links));
+        Assert.False(CarryOverOffer.AlreadyOnToday(image, new[] { today }));
+    }
+
+    [Fact]
+    public void UndoBring_RemovesTheLink_AndAnEditedCheckOffNoLongerRetiresTheSource()
+    {
+        var source = Open("买菜", "生活", new DateOnly(2026, 10, 15));
+        var broughtTo = new DateOnly(2026, 10, 16);
+        var (carryId, link) = CarryLineage.Stamp(source, broughtTo);
+        var links = new CarryLinkTable();
+        links.Remember(link);
+
+        var edited = new TodayTaskRef("去超市买菜", "生活", "", carryId);
+        Assert.True(CarryOverOffer.AlreadyOnToday(source, new[] { edited }, links));
+        Assert.Empty(CarryOverOffer.Pending(
+            new[] { source },
+            new[] { edited },
+            new CarryOverMemory(),
+            broughtTo,
+            links));
+
+        var finished = new[] { new FinishedTaskRef(broughtTo, "去超市买菜", "生活", "", carryId) };
+        Assert.Empty(CarryOverOffer.StillUnfinished(new[] { source }, finished, links));
+
+        Assert.True(links.Remove(carryId));
+        Assert.False(CarryOverOffer.AlreadyOnToday(source, new[] { edited }, links));
+        Assert.Single(CarryOverOffer.StillUnfinished(new[] { source }, finished, links));
+        Assert.Single(CarryOverOffer.Pending(
+            new[] { source },
+            new[] { edited },
+            new CarryOverMemory(),
+            broughtTo,
+            links));
+    }
+
+    [Fact]
+    public void CarryMarker_StaysOnTheMarkdownLine_AndOutOfTheTitle()
+    {
+        var task = new DayTask
+        {
+            Text = "买菜",
+            Category = "生活",
+            CarryId = "dl-abc12345",
+            Attachments = new List<TaskAttachment>
+            {
+                new()
+                {
+                    RelativePath = "DayList-attachments/2026-10-16/a.png",
+                    DisplayName = "a.png",
+                    IsImage = true
+                }
+            }
+        };
+
+        const string line = "- [ ] 买菜 ![[DayList-attachments/2026-10-16/a.png]] ^dl-abc12345";
+        Assert.Equal(line, task.ToMarkdown());
+        Assert.True(DayTask.TryParseLine(line, out var parsed));
+        Assert.Equal("买菜", parsed.Text);
+        Assert.Equal("dl-abc12345", parsed.CarryId);
+        Assert.Equal(line, parsed.ToMarkdown());
+        Assert.Equal("买菜", OverdueIdentity.IdentityText(parsed.Text, parsed.Attachments));
+        Assert.Equal(
+            "买菜",
+            OverdueIdentity.Label(new OverdueTaskItem(Yesterday, "买菜 ^dl-abc12345", "生活", "", '-', 'x')));
+
+        task.Text = "去超市买菜";
+        task.IsDone = true;
+        Assert.Equal(
+            "- [x] 去超市买菜 ![[DayList-attachments/2026-10-16/a.png]] ^dl-abc12345",
+            task.ToMarkdown());
+
+        const string userBlock = "- [ ] 见导师 ^todo";
+        Assert.True(DayTask.TryParseLine(userBlock, out var user));
+        Assert.Equal("见导师 ^todo", user.Text);
+        Assert.Equal("", user.CarryId);
+        Assert.Equal(userBlock, user.ToMarkdown());
+
+        var without = task.Copy();
+        without.CarryId = "";
+        Assert.False(DayTask.SameList(new[] { task }, new[] { without }));
+    }
+
+    [Fact]
+    public void CarryLinkStore_RoundTripsBesideCarryOver()
+    {
+        Assert.Equal(
+            Path.GetDirectoryName(CarryOverStore.DefaultPath),
+            Path.GetDirectoryName(CarryLinkStore.DefaultPath));
+        Assert.Equal("carry-links.json", Path.GetFileName(CarryLinkStore.DefaultPath));
+
+        var path = Path.Combine(Path.GetTempPath(), "daylist-links-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var source = Open("买菜", "生活");
+            var (carryId, link) = CarryLineage.Stamp(source, Today);
+            var table = new CarryLinkTable();
+            table.Remember(link);
+            CarryLinkStore.Save(table, path);
+
+            var json = File.ReadAllText(path);
+            Assert.Contains("\"carryId\"", json);
+            Assert.Contains("买菜", json);
+            Assert.DoesNotContain("\\u", json);
+
+            var loaded = CarryLinkStore.Load(path);
+            var found = loaded.Find(carryId);
+            Assert.NotNull(found);
+            Assert.True(found!.PointsAt(source));
+            Assert.True(loaded.Remove(carryId));
+            CarryLinkStore.Save(loaded, path);
+            Assert.Null(CarryLinkStore.Load(path).Find(carryId));
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void CollectOpenBefore_RetiresSource_WhenBroughtCopyWasEditedThenChecked()
+    {
+        using var vault = new TempVault();
+        var settings = vault.Settings();
+        var sourceDay = new DateOnly(2026, 10, 15);
+        var brought = new DateOnly(2026, 10, 16);
+        var today = new DateOnly(2026, 10, 17);
+        DailyNoteStore.Write(settings, sourceDay, new[]
+        {
+            new DayTask { Text = "买菜", Category = "生活" },
+            new DayTask { Text = "写信", Category = "生活" }
+        });
+
+        var source = Open("买菜", "生活", sourceDay);
+        var (carryId, link) = CarryLineage.Stamp(source, brought);
+        var links = new CarryLinkTable();
+        links.Remember(link);
+
+        var written = DailyNoteStore.Write(settings, brought, new[]
+        {
+            new DayTask
+            {
+                Text = "去超市买菜",
+                Category = "生活",
+                IsDone = true,
+                CarryId = carryId
+            }
+        });
+        Assert.Contains("^" + carryId, File.ReadAllText(written.FullPath));
+
+        var readBack = DailyNoteStore.Read(settings, brought);
+        Assert.Equal("去超市买菜", Assert.Single(readBack.Tasks).Text);
+        Assert.Equal(carryId, readBack.Tasks[0].CarryId);
+
+        var open = OverdueScan.CollectOpenBefore(settings, today, links: links);
+        Assert.DoesNotContain(open, item => item.Text == "买菜");
+        Assert.Equal("写信", Assert.Single(open).Text);
+
+        var withoutLinks = OverdueScan.CollectOpenBefore(settings, today);
+        Assert.Contains(withoutLinks, item => item.Text == "买菜");
+        Assert.Contains(withoutLinks, item => item.Text == "写信");
     }
 
     [Fact]
