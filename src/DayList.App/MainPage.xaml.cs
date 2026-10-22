@@ -3059,11 +3059,37 @@ public sealed partial class MainPage : Page
                 System.IO.Path.GetTempPath(),
                 $"DayList-Setup-{info.Version}.exe");
 
-            using (var response = await Http.GetAsync(info.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
+            // The installer is ~65 MB and GitHub can be slow, so this download gets its own
+            // long timeout and a progress readout instead of the shared 90s client + a frozen hint.
+            using var downloadClient = new HttpClient { Timeout = TimeSpan.FromMinutes(15) };
+            using var response = await downloadClient.GetAsync(
+                info.DownloadUrl,
+                HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            var total = response.Content.Headers.ContentLength ?? 0;
+            await using (var source = await response.Content.ReadAsStreamAsync())
+            await using (var target = System.IO.File.Create(path))
             {
-                response.EnsureSuccessStatusCode();
-                await using var target = System.IO.File.Create(path);
-                await response.Content.CopyToAsync(target);
+                var buffer = new byte[81920];
+                long received = 0;
+                var lastReport = Environment.TickCount64;
+                int read;
+                while ((read = await source.ReadAsync(buffer)) > 0)
+                {
+                    await target.WriteAsync(buffer.AsMemory(0, read));
+                    received += read;
+                    var now = Environment.TickCount64;
+                    if (now - lastReport < 250)
+                        continue;
+
+                    lastReport = now;
+                    var pct = total > 0 ? received * 100 / total : 0;
+                    var size = total > 0
+                        ? $"{ToMb(received)} / {ToMb(total)} MB"
+                        : $"{ToMb(received)} MB";
+                    ShowStatus($"正在下载 v{info.Version} 安装包… {pct}%（{size}）", InfoBarSeverity.Informational);
+                }
             }
 
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -3082,6 +3108,9 @@ public sealed partial class MainPage : Page
             TryOpenPage(info.PageUrl);
         }
     }
+
+    private static string ToMb(long bytes) =>
+        (bytes / 1024d / 1024d).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
 
     private static void TryOpenPage(string url)
     {
