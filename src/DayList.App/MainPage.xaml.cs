@@ -3118,94 +3118,31 @@ public sealed partial class MainPage : Page
             if (info is null || _closed)
                 return;
 
+            // The user chose to ignore this exact version earlier.
+            if (string.Equals(info.Version, _settings.IgnoredUpdateVersion, StringComparison.Ordinal))
+                return;
+
             // Bottom-right notice instead of an in-page bar, so it is visible even when
-            // the main window is hidden to the tray.
+            // the main window is hidden to the tray. The download runs inside the popup.
             _updatePopup?.Close();
-            _updatePopup = new UpdatePopup(info, () => _ = RunUpdateAsync(info));
+            _updatePopup = new UpdatePopup(info, version =>
+            {
+                _settings.IgnoredUpdateVersion = version;
+                try
+                {
+                    SettingsStore.Save(_settings);
+                }
+                catch
+                {
+                    // Saving the preference is best-effort.
+                }
+            });
             _updatePopup.Closed += (_, _) => _updatePopup = null;
             _updatePopup.Activate();
         }
         catch
         {
             // Update checks are best-effort.
-        }
-    }
-
-    private async Task RunUpdateAsync(UpdateInfo info)
-    {
-        try
-        {
-            ShowStatus($"正在下载 v{info.Version} 安装包…", InfoBarSeverity.Informational);
-            var path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                $"DayList-Setup-{info.Version}.exe");
-
-            // The installer is ~65 MB and GitHub can be slow, so this download gets its own
-            // long timeout and a progress readout instead of the shared 90s client + a frozen hint.
-            using var downloadClient = new HttpClient { Timeout = TimeSpan.FromMinutes(15) };
-            using var response = await downloadClient.GetAsync(
-                info.DownloadUrl,
-                HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
-
-            var total = response.Content.Headers.ContentLength ?? 0;
-            await using (var source = await response.Content.ReadAsStreamAsync())
-            await using (var target = System.IO.File.Create(path))
-            {
-                var buffer = new byte[81920];
-                long received = 0;
-                var lastReport = Environment.TickCount64;
-                int read;
-                while ((read = await source.ReadAsync(buffer)) > 0)
-                {
-                    await target.WriteAsync(buffer.AsMemory(0, read));
-                    received += read;
-                    var now = Environment.TickCount64;
-                    if (now - lastReport < 250)
-                        continue;
-
-                    lastReport = now;
-                    var pct = total > 0 ? received * 100 / total : 0;
-                    var size = total > 0
-                        ? $"{ToMb(received)} / {ToMb(total)} MB"
-                        : $"{ToMb(received)} MB";
-                    ShowStatus($"正在下载 v{info.Version} 安装包… {pct}%（{size}）", InfoBarSeverity.Informational);
-                }
-            }
-
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = path,
-                UseShellExecute = true
-            });
-
-            // Let the installer take over; it closes the old process if needed.
-            await Task.Delay(800);
-            Application.Current.Exit();
-        }
-        catch (Exception ex)
-        {
-            ShowStatus("更新失败：" + ex.Message + "，已打开下载页。", InfoBarSeverity.Warning);
-            TryOpenPage(info.PageUrl);
-        }
-    }
-
-    private static string ToMb(long bytes) =>
-        (bytes / 1024d / 1024d).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
-
-    private static void TryOpenPage(string url)
-    {
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
-        }
-        catch
-        {
-            // Opening the release page is best-effort.
         }
     }
 

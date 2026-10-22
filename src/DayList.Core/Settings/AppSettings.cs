@@ -41,6 +41,9 @@ public sealed class AppSettings
     /// <summary>Optional global hotkey that opens the quick-add capture bar. Empty = off.</summary>
     public string QuickAddHotkey { get; set; } = "";
 
+    /// <summary>A version the user chose to ignore; the update banner stays quiet for it.</summary>
+    public string IgnoredUpdateVersion { get; set; } = "";
+
     public int FocusMinutes { get; set; } = 25;
 
     public int BreakMinutes { get; set; } = 5;
@@ -135,6 +138,7 @@ public sealed class AppSettings
             StartMinimizedToTray = StartMinimizedToTray,
             Hotkey = Hotkey,
             QuickAddHotkey = QuickAddHotkey,
+            IgnoredUpdateVersion = IgnoredUpdateVersion,
             FocusMinutes = FocusMinutes,
             BreakMinutes = BreakMinutes,
             WindowLeft = WindowLeft,
