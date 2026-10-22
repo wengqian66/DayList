@@ -81,18 +81,16 @@ public static class CarryOverOffer
         IReadOnlyList<OverdueTaskItem> open,
         IEnumerable<FinishedTaskRef> finished)
     {
-        var latest = new Dictionary<(string Category, string Text), DateOnly>();
-        foreach (var done in finished)
+        var done = new List<(string Category, string Text, DateOnly Date)>();
+        foreach (var item in finished)
         {
-            var text = OverdueIdentity.IdentityText(done.Text, done.AttachmentKey);
+            var text = OverdueIdentity.IdentityText(item.Text, item.AttachmentKey);
             if (text.Length == 0)
                 continue;
-            var key = (DayTaskCategory.Normalize(done.Category), text);
-            if (!latest.TryGetValue(key, out var existing) || done.Date > existing)
-                latest[key] = done.Date;
+            done.Add((DayTaskCategory.Normalize(item.Category), NormalizeText(text), item.Date));
         }
 
-        if (latest.Count == 0)
+        if (done.Count == 0)
             return open.Where(item => OverdueIdentity.IdentityText(item.Text, item.Attachments).Length > 0).ToList();
 
         var pending = new List<OverdueTaskItem>(open.Count);
@@ -101,13 +99,82 @@ public static class CarryOverOffer
             var text = OverdueIdentity.IdentityText(item.Text, item.Attachments);
             if (text.Length == 0)
                 continue;
-            var key = (DayTaskCategory.Normalize(item.Category), text);
-            if (latest.TryGetValue(key, out var doneOn) && doneOn > item.Date)
+
+            var category = DayTaskCategory.Normalize(item.Category);
+            var normalized = NormalizeText(text);
+            var finishedLater = done.Any(entry =>
+                entry.Date > item.Date
+                && entry.Category == category
+                && SameTaskText(entry.Text, normalized));
+            if (finishedLater)
                 continue;
+
             pending.Add(item);
         }
 
         return pending;
+    }
+
+    /// <summary>
+    /// 「带入今日」 copies forward and leaves the source unchecked, so the later tick is the
+    /// completion. The copy is often edited first (「…获取方式」→「…获取方式（补充）」), so the
+    /// text is compared loosely: a small edit still counts as the same task.
+    /// </summary>
+    private static bool SameTaskText(string a, string b)
+    {
+        if (string.Equals(a, b, StringComparison.Ordinal))
+            return true;
+        if (a.Length == 0 || b.Length == 0)
+            return false;
+
+        // Attachment-only lines carry a file list key; only an exact list counts.
+        if (a[0] == AttachMarker || b[0] == AttachMarker)
+            return false;
+
+        var shorter = a.Length <= b.Length ? a : b;
+        var longer = a.Length <= b.Length ? b : a;
+        if (shorter.Length >= 4 && longer.Contains(shorter, StringComparison.Ordinal))
+            return true;
+
+        var max = Math.Max(a.Length, b.Length);
+        var allowed = (int)Math.Floor(max * 0.22);
+        return allowed > 0 && EditDistance(a, b, allowed) <= allowed;
+    }
+
+    private const char AttachMarker = '\u001e';
+
+    private static string NormalizeText(string text) =>
+        string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static int EditDistance(string a, string b, int cutoff)
+    {
+        if (a.Length == 0)
+            return b.Length;
+        if (b.Length == 0)
+            return a.Length;
+        if (Math.Abs(a.Length - b.Length) > cutoff)
+            return cutoff + 1;
+
+        var previous = new int[b.Length + 1];
+        var current = new int[b.Length + 1];
+        for (var j = 0; j <= b.Length; j++)
+            previous[j] = j;
+
+        for (var i = 1; i <= a.Length; i++)
+        {
+            current[0] = i;
+            for (var j = 1; j <= b.Length; j++)
+            {
+                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                current[j] = Math.Min(
+                    Math.Min(current[j - 1] + 1, previous[j] + 1),
+                    previous[j - 1] + cost);
+            }
+
+            (previous, current) = (current, previous);
+        }
+
+        return previous[b.Length];
     }
 
     /// <summary>

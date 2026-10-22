@@ -248,6 +248,38 @@ public class RetentionTests
         Assert.Empty(CarryOverOffer.Pending(pending, Array.Empty<TodayTaskRef>(), dismissed, Today));
     }
 
+    [Fact]
+    public void StillUnfinished_DropsAnEditedCopyCheckedOffOnALaterDay()
+    {
+        var source = new DateOnly(2026, 10, 20);
+        var finishedOn = new DateOnly(2026, 10, 21);
+
+        var open = new[]
+        {
+            Open("会话知识库接口返回具体的session名称，可参考会话列表名称的获取方式", "工作", source),
+            Open("批量删除历史会话（http://localhost:3001/api/agent-platform/workspace/files?agent_id=149&session_id=cf9017ff-e9c4-49d8-9faf-d8b290b7c043&path=output%2F_part4.md）支持传多个agent_id和session_id？", "工作", source)
+        };
+        var finished = new[]
+        {
+            new FinishedTaskRef(finishedOn, "会话知识库接口返回具体的session名称，可参考会话列表名称的获取方式（贾老师那边得新增接口）", "工作"),
+            new FinishedTaskRef(finishedOn, "批量删除历史会话文件（http://localhost:3001/api/agent-platform/workspace/files?agent_id=149&session_id=cf9017ff-e9c4-49d8-9faf-d8b290b7c043&path=output%2F_part4.md）是否支持传多个agent_id和session_id？", "工作")
+        };
+
+        Assert.Empty(CarryOverOffer.StillUnfinished(open, finished));
+    }
+
+    [Fact]
+    public void StillUnfinished_KeepsUnrelatedShortTasks()
+    {
+        var source = new DateOnly(2026, 10, 20);
+        var finishedOn = new DateOnly(2026, 10, 21);
+
+        var open = new[] { Open("写周报", "工作", source) };
+        var finished = new[] { new FinishedTaskRef(finishedOn, "写日报", "工作") };
+
+        Assert.Single(CarryOverOffer.StillUnfinished(open, finished));
+    }
+
     private static OverdueTaskItem ImageOnly(string file, string category = "") =>
         new(Yesterday, "", category, "", '-', 'x')
         {
