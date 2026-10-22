@@ -81,6 +81,8 @@ public sealed partial class QuickAddWindow : Window
         UpdateDateLabel();
         UpdateTimeLabel();
         FadeIn(Content as FrameworkElement);
+        // Activation can fire before the text box is in the visual tree; focus on Loaded too.
+        Input.Loaded += (_, _) => FocusInput();
 
         Activated += (_, args) =>
         {
@@ -101,6 +103,7 @@ public sealed partial class QuickAddWindow : Window
         if (_open is not null)
         {
             _open.Activate();
+            _open.ForceForeground();
             _open.FocusInput();
             return;
         }
@@ -108,17 +111,44 @@ public sealed partial class QuickAddWindow : Window
         _open = new QuickAddWindow();
         _open.Closed += (_, _) => _open = null;
         _open.Activate();
+        _open.ForceForeground();
         _open.FocusInput();
+    }
+
+    /// <summary>Activation alone can leave the window behind the foreground app, which
+    /// keeps the text box from receiving keyboard input.</summary>
+    private void ForceForeground()
+    {
+        try
+        {
+            NativeShell.SetForegroundWindow(WindowNative.GetWindowHandle(this));
+        }
+        catch
+        {
+            // Foreground is best-effort.
+        }
     }
 
     private void FocusInput()
     {
         Input.Focus(FocusState.Programmatic);
         Input.SelectAll();
+
+        // One dispatcher tick later the window is usually active for real.
         DispatcherQueue.TryEnqueue(() =>
         {
             Input.Focus(FocusState.Programmatic);
             Input.SelectAll();
+        });
+
+        // And once more after the fade-in settles, in case activation stole it back.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                Input.Focus(FocusState.Programmatic);
+                Input.SelectAll();
+            });
         });
     }
 
