@@ -17,7 +17,7 @@ namespace DayList;
 internal sealed class UpdatePopup : Window
 {
     private const int Width = 380;
-    private const int Height = 176;
+    private const int Height = 206;
 
     private readonly UpdateInfo _info;
     private readonly Action<string> _onIgnore;
@@ -123,7 +123,7 @@ internal sealed class UpdatePopup : Window
             BorderBrush = line,
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(16),
-            Padding = new Thickness(18, 14, 18, 14),
+            Padding = new Thickness(18, 12, 18, 12),
             Child = stack
         };
         shell.RequestedTheme = ElementTheme.Light;
