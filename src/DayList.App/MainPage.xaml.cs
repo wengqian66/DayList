@@ -69,6 +69,7 @@ public sealed partial class MainPage : Page
     private string _searchText = "";
     private bool _planMode;
     private bool _planBusy;
+    private UpdatePopup? _updatePopup;
     private bool _templatesReady;
     private bool _noteMatchesDisk = true;
     private int _celebrationToken;
@@ -3117,11 +3118,12 @@ public sealed partial class MainPage : Page
             if (info is null || _closed)
                 return;
 
-            ShowStatus(
-                $"发现新版本 v{info.Version}，点「更新」下载并安装。",
-                InfoBarSeverity.Informational,
-                "更新",
-                () => _ = RunUpdateAsync(info));
+            // Bottom-right notice instead of an in-page bar, so it is visible even when
+            // the main window is hidden to the tray.
+            _updatePopup?.Close();
+            _updatePopup = new UpdatePopup(info, () => _ = RunUpdateAsync(info));
+            _updatePopup.Closed += (_, _) => _updatePopup = null;
+            _updatePopup.Activate();
         }
         catch
         {
