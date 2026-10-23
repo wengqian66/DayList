@@ -197,6 +197,12 @@ public static class CarryOverOffer
     {
         var todayList = todayTasks as IReadOnlyList<TodayTaskRef> ?? todayTasks.ToList();
         var pending = new List<OverdueTaskItem>();
+
+        // 「带入今日」 leaves the source line unchecked, so the same title is open on every
+        // day it was copied through. Offer it once — the newest copy — instead of one row per
+        // source day, which used to repeat the same line every morning.
+        var byOffer = new Dictionary<(string Category, string Text), int>();
+
         foreach (var item in openBeforeToday)
         {
             if (OverdueIdentity.IdentityText(item.Text, item.Attachments).Length == 0)
@@ -205,10 +211,33 @@ public static class CarryOverOffer
                 continue;
             if (memory.Covers(today, item))
                 continue;
+
+            var key = OfferKey(item);
+            if (key.Text.Length > 0 && byOffer.TryGetValue(key, out var kept))
+            {
+                if (item.Date > pending[kept].Date)
+                    pending[kept] = item;
+                continue;
+            }
+
+            if (key.Text.Length > 0)
+                byOffer[key] = pending.Count;
             pending.Add(item);
         }
 
-        return pending;
+        return pending.OrderBy(item => item.Date).ToList();
+    }
+
+    /// <summary>
+    /// Identity used to collapse a copied-forward chain. The carry marker is stripped so the
+    /// copy and its source match; attachment-only lines fall back to their file names.
+    /// </summary>
+    private static (string Category, string Text) OfferKey(OverdueTaskItem item)
+    {
+        var text = CarryMarker.Visible(item.Text).Trim();
+        if (text.Length == 0)
+            text = OverdueIdentity.AttachmentKey(item.Attachments);
+        return (DayTaskCategory.Normalize(item.Category), text);
     }
 
     public static CarryOverMemory MarkHandled(

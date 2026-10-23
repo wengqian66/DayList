@@ -601,6 +601,54 @@ public class RetentionTests
     }
 
     [Fact]
+    public void Pending_ShowsOneRow_WhenTheSameTaskIsOpenOnSeveralEarlierDays()
+    {
+        // 「带入今日」 leaves the source line unchecked, so after copying on consecutive
+        // days the same title sits open on 10/21, 10/22 and 10/23. The banner must offer it
+        // once (the newest copy), not once per source day.
+        var sourceDay = new DateOnly(2026, 10, 21);
+        var copiedDay = new DateOnly(2026, 10, 22);
+        var today = new DateOnly(2026, 10, 23);
+
+        var source = Open("买菜", "生活", sourceDay);
+        var (_, link) = CarryLineage.Stamp(source, copiedDay);
+        var links = new CarryLinkTable();
+        links.Remember(link);
+
+        var open = new[]
+        {
+            source,
+            Open("买菜", "生活", copiedDay),
+            Open("写周报", "工作", copiedDay)
+        };
+
+        var pending = CarryOverOffer.Pending(open, Array.Empty<TodayTaskRef>(), new CarryOverMemory(), today, links);
+
+        Assert.Equal(2, pending.Count);
+        Assert.Equal(copiedDay, pending[0].Date);
+        Assert.Equal("买菜", pending[0].Text);
+        Assert.Equal("写周报", pending[1].Text);
+    }
+
+    [Fact]
+    public void Pending_KeepsTasksThatOnlyShareATitleAcrossCategories()
+    {
+        var sourceDay = new DateOnly(2026, 10, 21);
+        var copiedDay = new DateOnly(2026, 10, 22);
+        var today = new DateOnly(2026, 10, 23);
+
+        var open = new[]
+        {
+            Open("整理", "生活", sourceDay),
+            Open("整理", "工作", copiedDay)
+        };
+
+        var pending = CarryOverOffer.Pending(open, Array.Empty<TodayTaskRef>(), new CarryOverMemory(), today, null);
+
+        Assert.Equal(2, pending.Count);
+    }
+
+    [Fact]
     public void Templates_OfferThreeStarters_ThatBecomeRealTasks()
     {
         Assert.Equal(new[] { "morning", "shutdown", "weekly" }, DayTemplates.Starters.Select(item => item.Id));
