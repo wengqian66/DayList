@@ -151,18 +151,23 @@ internal static class HeatmapPanel
     {
         // Wide cells can afford a label every other column; narrow ones need more room.
         var minGap = step >= 20 ? 2 : 3;
-        var lastColumn = -minGap;
         var fontSize = step >= 16 ? 11 : 10;
+        var placed = new List<(int Column, TextBlock Block)>();
 
         foreach (var (column, month) in months)
         {
-            // Months are ~4.3 columns apart, but a month can start one column after the
-            // previous one. Nudge the label right instead of dropping it, so every month
-            // keeps a label without two of them colliding.
-            var placed = Math.Max(column, lastColumn + minGap);
-            // Stop before the last columns; a label there would be clipped by the grid edge.
-            if (placed >= host.ColumnDefinitions.Count - 2)
+            // A label on the last column would be cut off by the grid edge.
+            if (column + 1 >= host.ColumnDefinitions.Count)
                 break;
+
+            // Two months can start one column apart (the range begins mid-month). Rather than
+            // shoving the newer label to the right — which made those gaps look uneven — drop
+            // the older, shorter partial month and keep every remaining label on its own column.
+            while (placed.Count > 0 && column - placed[^1].Column < minGap)
+            {
+                host.Children.Remove(placed[^1].Block);
+                placed.RemoveAt(placed.Count - 1);
+            }
 
             var text = new TextBlock
             {
@@ -172,11 +177,11 @@ internal static class HeatmapPanel
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Bottom
             };
-            Grid.SetColumn(text, placed + 1);
+            Grid.SetColumn(text, column + 1);
             Grid.SetColumnSpan(text, Math.Max(2, minGap));
             Grid.SetRow(text, 0);
             host.Children.Add(text);
-            lastColumn = placed;
+            placed.Add((column, text));
         }
     }
 
