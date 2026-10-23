@@ -18,6 +18,7 @@ internal static class HeatmapPanel
     private const double Step = Cell + Gap;
     private const double LeftGutter = 24;
     private const double TopGutter = 18;
+    private const double TextHeight = 15;
     private const int Weeks = 53;
 
     /// <summary>Monday of the column that starts <paramref name="weeks"/> weeks before today's week.</summary>
@@ -71,8 +72,15 @@ internal static class HeatmapPanel
             }
         }
 
-        AddMonthLabels(host, months, first);
-        AddWeekdayLabels(host);
+        var labels = new Canvas { IsHitTestVisible = false };
+        Grid.SetColumn(labels, 0);
+        Grid.SetColumnSpan(labels, Weeks + 1);
+        Grid.SetRow(labels, 0);
+        Grid.SetRowSpan(labels, 8);
+        host.Children.Add(labels);
+
+        AddMonthLabels(labels, months);
+        AddWeekdayLabels(labels);
     }
 
     private static Border BuildCell(
@@ -120,13 +128,13 @@ internal static class HeatmapPanel
         return cell;
     }
 
-    private static void AddMonthLabels(Grid host, List<(int Column, int Month)> months, DateOnly first)
+    private static void AddMonthLabels(Canvas labels, List<(int Column, int Month)> months)
     {
         var lastColumn = -4;
         foreach (var (column, month) in months)
         {
-            // Labels are wide, the columns are narrow: span a few columns so the text is not
-            // clipped, and drop a label that would sit on top of the previous one.
+            // The grid columns are 12px wide and the label is ~30px, so drop a label that
+            // would sit on top of the previous one instead of letting them collide.
             if (column - lastColumn < 4)
                 continue;
 
@@ -134,36 +142,34 @@ internal static class HeatmapPanel
             {
                 Text = month + "月",
                 FontSize = 11,
-                Foreground = MutedBrush(),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Bottom,
-                IsHitTestVisible = false
+                Foreground = MutedBrush()
             };
-            Grid.SetColumn(text, column + 1);
-            Grid.SetColumnSpan(text, 4);
-            Grid.SetRow(text, 0);
-            host.Children.Add(text);
+            Canvas.SetLeft(text, LeftGutter + column * Step);
+            Canvas.SetTop(text, 2);
+            labels.Children.Add(text);
             lastColumn = column;
         }
     }
 
-    private static void AddWeekdayLabels(Grid host)
+    /// <summary>
+    /// Monday, Wednesday, Friday — the three GitHub shows. These sit on a canvas because a
+    /// cell row is only 12px tall; centred inside a row the 11px text was clipped top and
+    /// bottom, which cut the middle strokes out of 三 and 五.
+    /// </summary>
+    private static void AddWeekdayLabels(Canvas labels)
     {
-        // Monday, Wednesday, Friday — the same three GitHub shows.
-        var labels = new (int Row, string Text)[] { (1, "一"), (3, "三"), (5, "五") };
-        foreach (var (row, text) in labels)
+        var rows = new (int Row, string Text)[] { (1, "一"), (3, "三"), (5, "五") };
+        foreach (var (row, text) in rows)
         {
             var block = new TextBlock
             {
                 Text = text,
                 FontSize = 11,
-                Foreground = MutedBrush(),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Center
+                Foreground = MutedBrush()
             };
-            Grid.SetColumn(block, 0);
-            Grid.SetRow(block, row);
-            host.Children.Add(block);
+            Canvas.SetLeft(block, 3);
+            Canvas.SetTop(block, TopGutter + row * Step + (Step - TextHeight) / 2);
+            labels.Children.Add(block);
         }
     }
 
