@@ -13,47 +13,72 @@ namespace DayList;
 /// </summary>
 internal static class HeatmapPanel
 {
-    private const double Cell = 10;
-    private const double Gap = 2;
-    private const double Step = Cell + Gap;
     private const double LeftGutter = 24;
     private const double TopGutter = 18;
-    private const double TextHeight = 15;
-    private const int Weeks = 53;
+
+    /// <summary>Column counts offered by the range switcher.</summary>
+    public const int WeeksYear = 53;
+    public const int WeeksHalf = 26;
+    public const int WeeksQuarter = 13;
+
+    /// <summary>Smallest and largest square the grid will draw.</summary>
+    private const double MinStep = 10;
+    private const double MaxStep = 34;
 
     /// <summary>Monday of the column that starts <paramref name="weeks"/> weeks before today's week.</summary>
-    public static DateOnly FirstColumn(DateOnly today, int weeks = Weeks)
+    public static DateOnly FirstColumn(DateOnly today, int weeks = WeeksYear)
     {
         var monday = StartOfWeek(today);
-        return monday.AddDays(-7 * (weeks - 1));
+        return monday.AddDays(-7 * (Math.Max(1, weeks) - 1));
     }
 
     public static DateOnly LastColumnEnd(DateOnly today) => StartOfWeek(today).AddDays(6);
+
+    /// <summary>
+    /// Column pitch that fills <paramref name="availableWidth"/>. The grid has a fixed number
+    /// of columns, so a wider window — or a shorter range — simply gets bigger squares instead
+    /// of empty card space.
+    /// </summary>
+    public static double StepFor(double availableWidth, int weeks = WeeksYear)
+    {
+        if (availableWidth <= 0 || double.IsNaN(availableWidth))
+            return 12;
+
+        var step = (availableWidth - LeftGutter) / Math.Max(1, weeks);
+        return Math.Floor(Math.Clamp(step, MinStep, MaxStep));
+    }
 
     public static void Build(
         Grid host,
         DateOnly today,
         IReadOnlyDictionary<DateOnly, DayActivityCount> counts,
-        Action<DateOnly> onPick)
+        Action<DateOnly> onPick,
+        double availableWidth = 0,
+        int weeks = WeeksYear)
     {
         host.Children.Clear();
         host.ColumnDefinitions.Clear();
         host.RowDefinitions.Clear();
 
-        var first = FirstColumn(today);
+        weeks = Math.Max(1, weeks);
+        var step = StepFor(availableWidth, weeks);
+        var gap = step >= 16 ? 3 : 2;
+        var cell = step - gap;
+
+        var first = FirstColumn(today, weeks);
         var lastDay = LastColumnEnd(today);
 
         host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LeftGutter) });
-        for (var week = 0; week < Weeks; week++)
-            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Step) });
+        for (var week = 0; week < weeks; week++)
+            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(step) });
         host.RowDefinitions.Add(new RowDefinition { Height = new GridLength(TopGutter) });
         for (var row = 0; row < 7; row++)
-            host.RowDefinitions.Add(new RowDefinition { Height = new GridLength(Step) });
+            host.RowDefinitions.Add(new RowDefinition { Height = new GridLength(step) });
 
         var maxDone = counts.Count == 0 ? 0 : counts.Values.Max(count => count.Done);
         var months = new List<(int Column, int Month)>();
 
-        for (var week = 0; week < Weeks; week++)
+        for (var week = 0; week < weeks; week++)
         {
             for (var row = 0; row < 7; row++)
             {
@@ -65,14 +90,14 @@ internal static class HeatmapPanel
                 if (row == 0 && (months.Count == 0 || months[^1].Month != day.Month))
                     months.Add((week, day.Month));
 
-                var cell = BuildCell(day, today, counts, maxDone, onPick);
-                Grid.SetColumn(cell, week + 1);
-                Grid.SetRow(cell, row + 1);
-                host.Children.Add(cell);
+                var cellBorder = BuildCell(day, today, counts, maxDone, onPick, cell);
+                Grid.SetColumn(cellBorder, week + 1);
+                Grid.SetRow(cellBorder, row + 1);
+                host.Children.Add(cellBorder);
             }
         }
 
-        AddMonthLabels(host, months);
+        AddMonthLabels(host, months, step);
         AddWeekdayLabels(host);
     }
 
@@ -81,7 +106,8 @@ internal static class HeatmapPanel
         DateOnly today,
         IReadOnlyDictionary<DateOnly, DayActivityCount> counts,
         int maxDone,
-        Action<DateOnly> onPick)
+        Action<DateOnly> onPick,
+        double size)
     {
         counts.TryGetValue(day, out var count);
         var future = day > today;
@@ -89,9 +115,9 @@ internal static class HeatmapPanel
 
         var cell = new Border
         {
-            Width = Cell,
-            Height = Cell,
-            CornerRadius = new CornerRadius(2.5),
+            Width = size,
+            Height = size,
+            CornerRadius = new CornerRadius(Math.Max(2, size * 0.22)),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
             Background = future ? Transparent() : HeatBrush(level),
@@ -121,29 +147,36 @@ internal static class HeatmapPanel
         return cell;
     }
 
-    private static void AddMonthLabels(Grid host, List<(int Column, int Month)> months)
+    private static void AddMonthLabels(Grid host, List<(int Column, int Month)> months, double step)
     {
-        var lastColumn = -4;
+        // Wide cells can afford a label every other column; narrow ones need more room.
+        var minGap = step >= 20 ? 2 : 3;
+        var lastColumn = -minGap;
+        var fontSize = step >= 16 ? 11 : 10;
+
         foreach (var (column, month) in months)
         {
-            // The grid columns are 12px wide and the label is ~28px, so drop a label that
-            // would sit on top of the previous one instead of letting them collide.
-            if (column - lastColumn < 4)
-                continue;
+            // Months are ~4.3 columns apart, but a month can start one column after the
+            // previous one. Nudge the label right instead of dropping it, so every month
+            // keeps a label without two of them colliding.
+            var placed = Math.Max(column, lastColumn + minGap);
+            // Stop before the last columns; a label there would be clipped by the grid edge.
+            if (placed >= host.ColumnDefinitions.Count - 2)
+                break;
 
             var text = new TextBlock
             {
                 Text = month + "月",
-                FontSize = 10,
+                FontSize = fontSize,
                 Foreground = MutedBrush(),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Bottom
             };
-            Grid.SetColumn(text, column + 1);
-            Grid.SetColumnSpan(text, 4);
+            Grid.SetColumn(text, placed + 1);
+            Grid.SetColumnSpan(text, Math.Max(2, minGap));
             Grid.SetRow(text, 0);
             host.Children.Add(text);
-            lastColumn = column;
+            lastColumn = placed;
         }
     }
 
@@ -173,7 +206,6 @@ internal static class HeatmapPanel
             host.Children.Add(block);
         }
     }
-
     private static DateOnly StartOfWeek(DateOnly day)
     {
         var offset = ((int)day.DayOfWeek + 6) % 7; // Monday = 0

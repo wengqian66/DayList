@@ -1271,28 +1271,56 @@
                         </StackPanel>
                         <StackPanel
                             x:Name="ActivityPanel"
+                            SizeChanged="ActivityPanel_SizeChanged"
                             Spacing="10"
                             Visibility="Collapsed">
-                            <StackPanel Spacing="2">
-                                <TextBlock
-                                    FontSize="18"
-                                    FontWeight="SemiBold"
-                                    Foreground="{StaticResource SoftInkBrush}"
-                                    Text="活跃度" />
-                                <TextBlock
-                                    FontSize="12"
-                                    Foreground="{StaticResource SoftMutedInkBrush}"
-                                    Text="近一年每天完成的任务数，颜色越深做得越多。"
-                                    TextWrapping="Wrap" />
-                            </StackPanel>
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                <StackPanel Spacing="2">
+                                    <TextBlock
+                                        FontSize="18"
+                                        FontWeight="SemiBold"
+                                        Foreground="{StaticResource SoftInkBrush}"
+                                        Text="活跃度" />
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{StaticResource SoftMutedInkBrush}"
+                                        Text="每天完成的任务数，颜色越深做得越多。"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel
+                                    Grid.Column="1"
+                                    VerticalAlignment="Top"
+                                    Orientation="Horizontal"
+                                    Spacing="4">
+                                    <Button
+                                        x:Name="RangeYearButton"
+                                        Click="Range_Click"
+                                        Content="一年"
+                                        Style="{StaticResource CategoryChipStyle}"
+                                        Tag="53" />
+                                    <Button
+                                        x:Name="RangeHalfButton"
+                                        Click="Range_Click"
+                                        Content="半年"
+                                        Style="{StaticResource CategoryChipStyle}"
+                                        Tag="26" />
+                                    <Button
+                                        x:Name="RangeQuarterButton"
+                                        Click="Range_Click"
+                                        Content="三月"
+                                        Style="{StaticResource CategoryChipStyle}"
+                                        Tag="13" />
+                                </StackPanel>
+                            </Grid>
                             <Border
                                 Background="{StaticResource SoftCardBrush}"
                                 BorderBrush="{StaticResource SoftLineBrush}"
                                 BorderThickness="1"
                                 CornerRadius="16"
                                 Padding="14,10,12,12">
-                                <StackPanel Spacing="8">
+                                <StackPanel Spacing="12">
                                     <Viewbox
+                                        x:Name="HeatmapScale"
                                         HorizontalAlignment="Left"
                                         Stretch="Uniform"
                                         StretchDirection="DownOnly">
@@ -1353,9 +1381,62 @@
                                             x:Name="HeatmapSummaryText"
                                             Grid.Column="2"
                                             VerticalAlignment="Center"
-                                            FontSize="12"
+                                            FontSize="11"
                                             Foreground="{StaticResource SoftMutedInkBrush}"
                                             Text="" />
+                                    </Grid>
+                                    <Grid
+                                        Margin="0,2,0,0"
+                                        ColumnDefinitions="*,*,*,*"
+                                        ColumnSpacing="10">
+                                        <StackPanel Spacing="1">
+                                            <TextBlock
+                                                x:Name="ActivityTotalDone"
+                                                FontSize="22"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource SoftInkBrush}"
+                                                Text="0" />
+                                            <TextBlock
+                                                FontSize="11"
+                                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                                Text="累计完成" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Spacing="1">
+                                            <TextBlock
+                                                x:Name="ActivityActiveDays"
+                                                FontSize="22"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource SoftInkBrush}"
+                                                Text="0" />
+                                            <TextBlock
+                                                FontSize="11"
+                                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                                Text="活跃天数" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Spacing="1">
+                                            <TextBlock
+                                                x:Name="ActivityCurrentStreak"
+                                                FontSize="22"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource SoftInkBrush}"
+                                                Text="0" />
+                                            <TextBlock
+                                                FontSize="11"
+                                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                                Text="当前连续（天）" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="3" Spacing="1">
+                                            <TextBlock
+                                                x:Name="ActivityLongestStreak"
+                                                FontSize="22"
+                                                FontWeight="SemiBold"
+                                                Foreground="{StaticResource SoftInkBrush}"
+                                                Text="0" />
+                                            <TextBlock
+                                                FontSize="11"
+                                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                                Text="最长连续（天）" />
+                                        </StackPanel>
                                     </Grid>
                                 </StackPanel>
                             </Border>

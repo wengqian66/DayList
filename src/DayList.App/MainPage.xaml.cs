@@ -69,6 +69,8 @@ public sealed partial class MainPage : Page
     private string _searchText = "";
     private IReadOnlyDictionary<DateOnly, DayActivityCount>? _activityCounts;
     private DateOnly _activityThrough;
+    private double _heatBuiltWidth = -1;
+    private int _activityWeeks = HeatmapPanel.WeeksYear;
     private bool _activityDirty = true;
     private bool _activityLoading;
     private bool _planMode;
@@ -1608,7 +1610,8 @@ public sealed partial class MainPage : Page
         try
         {
             var settings = _settings;
-            var first = HeatmapPanel.FirstColumn(today);
+            var weeks = _activityWeeks;
+            var first = HeatmapPanel.FirstColumn(today, weeks);
             var last = HeatmapPanel.LastColumnEnd(today);
             var counts = await Task.Run(() => DayActivityScan.Collect(settings, first, last));
 
@@ -1633,6 +1636,32 @@ public sealed partial class MainPage : Page
         }
     }
 
+    /// <summary>Switch between a year, half a year and a quarter. Fewer weeks means bigger squares.</summary>
+    private void Range_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string tag } || !int.TryParse(tag, out var weeks))
+            return;
+        if (weeks == _activityWeeks)
+            return;
+
+        _activityWeeks = weeks;
+        InvalidateActivity();
+        _ = RefreshActivityAsync();
+        SyncRangeChrome();
+    }
+
+    private void SyncRangeChrome()
+    {
+        if (RangeYearButton is null)
+            return;
+
+        var selected = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SoftNavSelectedBrush"];
+        var clear = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        RangeYearButton.Background = _activityWeeks == HeatmapPanel.WeeksYear ? selected : clear;
+        RangeHalfButton.Background = _activityWeeks == HeatmapPanel.WeeksHalf ? selected : clear;
+        RangeQuarterButton.Background = _activityWeeks == HeatmapPanel.WeeksQuarter ? selected : clear;
+    }
+
     private void RenderActivity(
         DateOnly today,
         IReadOnlyDictionary<DateOnly, DayActivityCount> counts)
@@ -1640,12 +1669,41 @@ public sealed partial class MainPage : Page
         if (HeatmapHost is null || HeatmapSummaryText is null)
             return;
 
-        HeatmapPanel.Build(HeatmapHost, today, counts, OpenActivityDay);
+        // The card padding eats 26px; the rest is the width the grid can fill.
+        var available = ActivityPanel is null ? 0 : ActivityPanel.ActualWidth - 26;
+        _heatBuiltWidth = available;
+        HeatmapPanel.Build(HeatmapHost, today, counts, OpenActivityDay, available, _activityWeeks);
 
-        var summary = ActivitySummary.From(counts, today);
-        HeatmapSummaryText.Text =
-            $"累计完成 {summary.TotalDone} 项 · 活跃 {summary.ActiveDays} 天 · " +
-            $"当前连续 {summary.CurrentStreak} 天 · 最长 {summary.LongestStreak} 天";
+        if (ActivityTotalDone is not null)
+        {
+            var summary = ActivitySummary.From(counts, today);
+            ActivityTotalDone.Text = summary.TotalDone.ToString();
+            ActivityActiveDays.Text = summary.ActiveDays.ToString();
+            ActivityCurrentStreak.Text = summary.CurrentStreak.ToString();
+            ActivityLongestStreak.Text = summary.LongestStreak.ToString();
+        }
+
+        HeatmapSummaryText.Text = _activityWeeks switch
+        {
+            HeatmapPanel.WeeksQuarter => "近三月",
+            HeatmapPanel.WeeksHalf => "近半年",
+            _ => "近一年"
+        };
+        SyncRangeChrome();
+    }
+
+    /// <summary>
+    /// The grid has a fixed 53 columns, so a wider window gives bigger squares instead of
+    /// stretching the same ones. Rebuild only when the width actually moved.
+    /// </summary>
+    private void ActivityPanel_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_activityCounts is null || _nav != MainNav.Activity)
+            return;
+        if (Math.Abs(e.NewSize.Width - 26 - _heatBuiltWidth) < 8)
+            return;
+
+        RenderActivity(DateOnly.FromDateTime(DateTime.Now), _activityCounts);
     }
 
     private void OpenActivityDay(DateOnly day)
