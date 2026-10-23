@@ -72,15 +72,8 @@ internal static class HeatmapPanel
             }
         }
 
-        var labels = new Canvas { IsHitTestVisible = false };
-        Grid.SetColumn(labels, 0);
-        Grid.SetColumnSpan(labels, Weeks + 1);
-        Grid.SetRow(labels, 0);
-        Grid.SetRowSpan(labels, 8);
-        host.Children.Add(labels);
-
-        AddMonthLabels(labels, months);
-        AddWeekdayLabels(labels);
+        AddMonthLabels(host, months);
+        AddWeekdayLabels(host);
     }
 
     private static Border BuildCell(
@@ -128,12 +121,12 @@ internal static class HeatmapPanel
         return cell;
     }
 
-    private static void AddMonthLabels(Canvas labels, List<(int Column, int Month)> months)
+    private static void AddMonthLabels(Grid host, List<(int Column, int Month)> months)
     {
         var lastColumn = -4;
         foreach (var (column, month) in months)
         {
-            // The grid columns are 12px wide and the label is ~30px, so drop a label that
+            // The grid columns are 12px wide and the label is ~28px, so drop a label that
             // would sit on top of the previous one instead of letting them collide.
             if (column - lastColumn < 4)
                 continue;
@@ -141,35 +134,43 @@ internal static class HeatmapPanel
             var text = new TextBlock
             {
                 Text = month + "月",
-                FontSize = 11,
-                Foreground = MutedBrush()
+                FontSize = 10,
+                Foreground = MutedBrush(),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Bottom
             };
-            Canvas.SetLeft(text, LeftGutter + column * Step);
-            Canvas.SetTop(text, 2);
-            labels.Children.Add(text);
+            Grid.SetColumn(text, column + 1);
+            Grid.SetColumnSpan(text, 4);
+            Grid.SetRow(text, 0);
+            host.Children.Add(text);
             lastColumn = column;
         }
     }
 
     /// <summary>
-    /// Monday, Wednesday, Friday — the three GitHub shows. These sit on a canvas because a
-    /// cell row is only 12px tall; centred inside a row the 11px text was clipped top and
-    /// bottom, which cut the middle strokes out of 三 and 五.
+    /// Monday, Wednesday, Friday. The grid starts on Monday, so their day rows are 0, 2 and 4.
+    /// A day row is only 12px tall, which clipped the top strokes of 三 and 五, so each label
+    /// spans three rows: the cell is 36px, and centring in it puts the text exactly on the
+    /// middle row without any clipping.
     /// </summary>
-    private static void AddWeekdayLabels(Canvas labels)
+    private static void AddWeekdayLabels(Grid host)
     {
-        var rows = new (int Row, string Text)[] { (1, "一"), (3, "三"), (5, "五") };
+        var rows = new (int Row, string Text)[] { (0, "一"), (2, "三"), (4, "五") };
         foreach (var (row, text) in rows)
         {
             var block = new TextBlock
             {
                 Text = text,
-                FontSize = 11,
-                Foreground = MutedBrush()
+                Margin = new Thickness(4, 0, 0, 0),
+                FontSize = 10,
+                Foreground = MutedBrush(),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center
             };
-            Canvas.SetLeft(block, 3);
-            Canvas.SetTop(block, TopGutter + row * Step + (Step - TextHeight) / 2);
-            labels.Children.Add(block);
+            Grid.SetColumn(block, 0);
+            Grid.SetRow(block, row);
+            Grid.SetRowSpan(block, 3);
+            host.Children.Add(block);
         }
     }
 
