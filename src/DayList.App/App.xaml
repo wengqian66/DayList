@@ -22,6 +22,13 @@
                     <Color x:Key="SoftAmberInkColor">#FF8A5A20</Color>
                     <Color x:Key="SoftNavSelectedColor">#FFE7D9C4</Color>
                     <Color x:Key="SoftPlaceholderColor">#666B5F52</Color>
+                    <!-- Activity heatmap: five warm steps, empty → busiest -->
+                    <Color x:Key="SoftHeat0Color">#FFF0E8DC</Color>
+                    <Color x:Key="SoftHeat1Color">#FFEBDCBE</Color>
+                    <Color x:Key="SoftHeat2Color">#FFDFC08D</Color>
+                    <Color x:Key="SoftHeat3Color">#FFC89552</Color>
+                    <Color x:Key="SoftHeat4Color">#FF8A5A20</Color>
+                    <Color x:Key="SoftHeatLineColor">#55E4D8C8</Color>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <Color x:Key="SoftCreamColor">#FF2B2621</Color>
@@ -34,6 +41,12 @@
                     <Color x:Key="SoftAmberInkColor">#FFD9A96B</Color>
                     <Color x:Key="SoftNavSelectedColor">#FF4A423A</Color>
                     <Color x:Key="SoftPlaceholderColor">#66A9988A</Color>
+                    <Color x:Key="SoftHeat0Color">#FF2E2822</Color>
+                    <Color x:Key="SoftHeat1Color">#FF4A3A22</Color>
+                    <Color x:Key="SoftHeat2Color">#FF6E5227</Color>
+                    <Color x:Key="SoftHeat3Color">#FF9A6C33</Color>
+                    <Color x:Key="SoftHeat4Color">#FFD9A96B</Color>
+                    <Color x:Key="SoftHeatLineColor">#55554A3F</Color>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
@@ -47,6 +60,12 @@
             <SolidColorBrush x:Key="SoftAmberInkBrush" Color="{ThemeResource SoftAmberInkColor}" />
             <SolidColorBrush x:Key="SoftNavSelectedBrush" Color="{ThemeResource SoftNavSelectedColor}" />
             <SolidColorBrush x:Key="SoftPlaceholderBrush" Color="{ThemeResource SoftPlaceholderColor}" />
+            <SolidColorBrush x:Key="SoftHeat0Brush" Color="{ThemeResource SoftHeat0Color}" />
+            <SolidColorBrush x:Key="SoftHeat1Brush" Color="{ThemeResource SoftHeat1Color}" />
+            <SolidColorBrush x:Key="SoftHeat2Brush" Color="{ThemeResource SoftHeat2Color}" />
+            <SolidColorBrush x:Key="SoftHeat3Brush" Color="{ThemeResource SoftHeat3Color}" />
+            <SolidColorBrush x:Key="SoftHeat4Brush" Color="{ThemeResource SoftHeat4Color}" />
+            <SolidColorBrush x:Key="SoftHeatLineBrush" Color="{ThemeResource SoftHeatLineColor}" />
 
             <!-- Typography tokens -->
             <FontFamily x:Key="DayListBodyFont">Segoe UI Variable, Segoe UI, Microsoft YaHei UI, Microsoft YaHei</FontFamily>

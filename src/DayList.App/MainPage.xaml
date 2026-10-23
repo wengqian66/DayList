@@ -686,9 +686,19 @@
                             </Border>
                         </Grid>
                     </Button>
+                    <Button
+                        x:Name="NavActivityButton"
+                        Click="NavActivity_Click"
+                        Style="{StaticResource SoftNavButtonStyle}"
+                        ToolTipService.ToolTip="近一年每天完成的任务数，像贡献热图一样上色。">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <FontIcon FontSize="15" Glyph="&#xE71D;" />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="活跃度" />
+                        </Grid>
+                    </Button>
                 </StackPanel>
 
-                                <StackPanel Grid.Row="2" Margin="0,8,0,0" Spacing="4">
+                <StackPanel Grid.Row="2" Margin="0,8,0,0" Spacing="4">
                     <Grid>
                         <Button
                             x:Name="ReportSidebarButton"
@@ -1258,6 +1268,97 @@
                                 TextWrapping="Wrap"
                                 Visibility="Collapsed" />
                             <StackPanel x:Name="InspirationFlowDays" Spacing="12" />
+                        </StackPanel>
+                        <StackPanel
+                            x:Name="ActivityPanel"
+                            Spacing="10"
+                            Visibility="Collapsed">
+                            <StackPanel Spacing="2">
+                                <TextBlock
+                                    FontSize="18"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource SoftInkBrush}"
+                                    Text="活跃度" />
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="{StaticResource SoftMutedInkBrush}"
+                                    Text="近一年每天完成的任务数，颜色越深做得越多。"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Border
+                                Background="{StaticResource SoftCardBrush}"
+                                BorderBrush="{StaticResource SoftLineBrush}"
+                                BorderThickness="1"
+                                CornerRadius="16"
+                                Padding="14,10,12,12">
+                                <StackPanel Spacing="8">
+                                    <Viewbox
+                                        HorizontalAlignment="Left"
+                                        Stretch="Uniform"
+                                        StretchDirection="DownOnly">
+                                        <Grid x:Name="HeatmapHost" />
+                                    </Viewbox>
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                        <StackPanel
+                                            VerticalAlignment="Center"
+                                            Orientation="Horizontal"
+                                            Spacing="3">
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                FontSize="11"
+                                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                                Text="少" />
+                                            <Border
+                                                Width="11"
+                                                Height="11"
+                                                Background="{StaticResource SoftHeat0Brush}"
+                                                BorderBrush="{StaticResource SoftHeatLineBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="2" />
+                                            <Border
+                                                Width="11"
+                                                Height="11"
+                                                Background="{StaticResource SoftHeat1Brush}"
+                                                CornerRadius="2" />
+                                            <Border
+                                                Width="11"
+                                                Height="11"
+                                                Background="{StaticResource SoftHeat2Brush}"
+                                                CornerRadius="2" />
+                                            <Border
+                                                Width="11"
+                                                Height="11"
+                                                Background="{StaticResource SoftHeat3Brush}"
+                                                CornerRadius="2" />
+                                            <Border
+                                                Width="11"
+                                                Height="11"
+                                                Background="{StaticResource SoftHeat4Brush}"
+                                                CornerRadius="2" />
+                                            <TextBlock
+                                                VerticalAlignment="Center"
+                                                FontSize="11"
+                                                Foreground="{StaticResource SoftMutedInkBrush}"
+                                                Text="多" />
+                                        </StackPanel>
+                                        <TextBlock
+                                            x:Name="HeatmapLoading"
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Foreground="{StaticResource SoftMutedInkBrush}"
+                                            Text="正在统计…"
+                                            Visibility="Collapsed" />
+                                        <TextBlock
+                                            x:Name="HeatmapSummaryText"
+                                            Grid.Column="2"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Foreground="{StaticResource SoftMutedInkBrush}"
+                                            Text="" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                         <ItemsControl
                             x:Name="CategoryCards"

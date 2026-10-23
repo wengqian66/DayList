@@ -27,7 +27,7 @@ public sealed partial class MainPage : Page
     private readonly PlanGenerationService _plans = new(Http);
     private readonly ObservableCollection<TaskRow> _rows = new();
     private readonly ObservableCollection<CategoryCardModel> _cards = new();
-    private enum MainNav { Today, Completed, Flow }
+    private enum MainNav { Today, Completed, Flow, Activity }
     private MainNav _nav = MainNav.Today;
     private readonly ObservableCollection<OverdueRow> _overdue = new();
     private readonly CancellationTokenSource _pageCts = new();
@@ -67,6 +67,10 @@ public sealed partial class MainPage : Page
     private List<OverdueTaskItem> _pendingOverdue = new();
     private string _overdueFilter = CarryOverOffer.AllLabel;
     private string _searchText = "";
+    private IReadOnlyDictionary<DateOnly, DayActivityCount>? _activityCounts;
+    private DateOnly _activityThrough;
+    private bool _activityDirty = true;
+    private bool _activityLoading;
     private bool _planMode;
     private bool _planBusy;
     private UpdatePopup? _updatePopup;
@@ -1466,6 +1470,13 @@ public sealed partial class MainPage : Page
             TemplateHost.Visibility = Visibility.Collapsed;
             GreetingText.Text = "近几天的灵感。";
         }
+        else if (_nav == MainNav.Activity)
+        {
+            EmptyState.Visibility = Visibility.Collapsed;
+            TemplateLead.Visibility = Visibility.Collapsed;
+            TemplateHost.Visibility = Visibility.Collapsed;
+            GreetingText.Text = "近一年的完成情况。";
+        }
         else
         {
             EmptyHint.Text = searching
@@ -1561,6 +1572,94 @@ public sealed partial class MainPage : Page
         RefreshOverdue();
     }
 
+    private void NavActivity_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_settings.HasVault)
+        {
+            ShowStatus("先连接 Obsidian 库，才能看活跃度。", InfoBarSeverity.Warning, "打开设置", () => OpenSettings());
+            return;
+        }
+
+        _nav = MainNav.Activity;
+        RebuildList();
+        UpdateStats();
+        RefreshOverdue();
+        _ = RefreshActivityAsync();
+    }
+
+    /// <summary>
+    /// Counts a year of daily notes. Reading ~370 files is fast enough but not free, so the
+    /// result is cached until a note is written, the day reloads, or the vault reloads.
+    /// </summary>
+    private async Task RefreshActivityAsync()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        if (!_activityDirty && _activityCounts is not null && _activityThrough == today)
+        {
+            RenderActivity(today, _activityCounts);
+            return;
+        }
+
+        if (_activityLoading)
+            return;
+
+        _activityLoading = true;
+        HeatmapLoading.Visibility = Visibility.Visible;
+        try
+        {
+            var settings = _settings;
+            var first = HeatmapPanel.FirstColumn(today);
+            var last = HeatmapPanel.LastColumnEnd(today);
+            var counts = await Task.Run(() => DayActivityScan.Collect(settings, first, last));
+
+            if (_closed || !_settings.HasVault || !ReferenceEquals(settings, _settings))
+                return;
+
+            _activityCounts = counts;
+            _activityThrough = today;
+            _activityDirty = false;
+            if (_nav == MainNav.Activity)
+                RenderActivity(today, counts);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("统计活跃度时出错：" + ex.Message, InfoBarSeverity.Error);
+        }
+        finally
+        {
+            _activityLoading = false;
+            if (!_closed)
+                HeatmapLoading.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void RenderActivity(
+        DateOnly today,
+        IReadOnlyDictionary<DateOnly, DayActivityCount> counts)
+    {
+        if (HeatmapHost is null || HeatmapSummaryText is null)
+            return;
+
+        HeatmapPanel.Build(HeatmapHost, today, counts, OpenActivityDay);
+
+        var summary = ActivitySummary.From(counts, today);
+        HeatmapSummaryText.Text =
+            $"累计完成 {summary.TotalDone} 项 · 活跃 {summary.ActiveDays} 天 · " +
+            $"当前连续 {summary.CurrentStreak} 天 · 最长 {summary.LongestStreak} 天";
+    }
+
+    private void OpenActivityDay(DateOnly day)
+    {
+        _nav = MainNav.Today;
+        RebuildList();
+        UpdateStats();
+        SetDate(day);
+        RefreshOverdue();
+    }
+
+    /// <summary>Any note write can change a day's counts; recompute on the next visit.</summary>
+    private void InvalidateActivity() => _activityDirty = true;
+
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         _searchText = SearchBoxInput?.Text ?? "";
@@ -1589,22 +1688,27 @@ public sealed partial class MainPage : Page
         var selected = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SoftNavSelectedBrush"];
         var clear = new Microsoft.UI.Xaml.Media.SolidColorBrush(Microsoft.UI.Colors.Transparent);
         var flow = _nav == MainNav.Flow;
+        var activity = _nav == MainNav.Activity;
         NavTodayButton.Background = _nav == MainNav.Today ? selected : clear;
         NavDoneButton.Background = _nav == MainNav.Completed ? selected : clear;
         if (InspirationButton is not null)
             InspirationButton.Background = flow ? selected : clear;
+        if (NavActivityButton is not null)
+            NavActivityButton.Background = activity ? selected : clear;
         if (SearchBox is not null)
-            SearchBox.Visibility = flow ? Visibility.Collapsed : Visibility.Visible;
+            SearchBox.Visibility = flow || activity ? Visibility.Collapsed : Visibility.Visible;
         if (InspirationStrip is not null)
             InspirationStrip.Visibility = _nav == MainNav.Today ? Visibility.Visible : Visibility.Collapsed;
         if (InspirationFlowPanel is not null)
             InspirationFlowPanel.Visibility = flow ? Visibility.Visible : Visibility.Collapsed;
+        if (ActivityPanel is not null)
+            ActivityPanel.Visibility = activity ? Visibility.Visible : Visibility.Collapsed;
         if (CategoryCards is not null)
-            CategoryCards.Visibility = flow ? Visibility.Collapsed : Visibility.Visible;
-        if (flow && EmptyState is not null)
+            CategoryCards.Visibility = flow || activity ? Visibility.Collapsed : Visibility.Visible;
+        if ((flow || activity) && EmptyState is not null)
             EmptyState.Visibility = Visibility.Collapsed;
         if (Composer is not null && _settings.HasVault)
-            Composer.Visibility = flow ? Visibility.Collapsed : Visibility.Visible;
+            Composer.Visibility = flow || activity ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void NewTaskInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -1616,7 +1720,7 @@ public sealed partial class MainPage : Page
             return;
         }
 
-        if (_nav == MainNav.Flow)
+        if (_nav is MainNav.Flow or MainNav.Activity)
         {
             _nav = MainNav.Today;
             RebuildList();
@@ -1630,7 +1734,7 @@ public sealed partial class MainPage : Page
     private void FocusSearchInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        if (!_settings.HasVault || _nav == MainNav.Flow || SearchBoxInput is null)
+        if (!_settings.HasVault || _nav is MainNav.Flow or MainNav.Activity || SearchBoxInput is null)
             return;
         SearchBoxInput.Focus(FocusState.Programmatic);
     }
@@ -3258,6 +3362,7 @@ public sealed partial class MainPage : Page
         {
             var result = DailyNoteStore.Write(_settings, _date, CurrentTasks());
             _knownHash = result.ContentHash;
+            InvalidateActivity();
             ArmWatcher(result.FullPath);
             PathText.Text = FormatNoteSubtitle(result.RelativePath, File.Exists(result.FullPath));
             RefreshSectionTitleChrome();
@@ -3623,6 +3728,8 @@ public sealed partial class MainPage : Page
     {
         if (_closed || !_settings.HasVault || Suppressed)
             return;
+
+        InvalidateActivity();
 
         DailyNoteSnapshot snapshot;
         try
