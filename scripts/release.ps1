@@ -26,7 +26,9 @@ $tag = "v$Version"
 
 $notes = "v$Version"
 if ($NotesFile -and (Test-Path $NotesFile)) {
-    $notes = Get-Content -Raw -Encoding UTF8 $NotesFile
+    # ReadAllText keeps this a plain string. Get-Content -Raw can hand back a decorated
+    # object here, and ConvertTo-Json then serialises the whole PSObject as the body.
+    $notes = [System.IO.File]::ReadAllText($NotesFile, [System.Text.Encoding]::UTF8)
 }
 
 $credIn = "protocol=https`nhost=github.com`n`n"
