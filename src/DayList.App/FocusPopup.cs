@@ -204,8 +204,11 @@ internal sealed class FocusPopup : Window
     private void MoveToCorner()
     {
         var work = WorkArea();
-        var place = FocusCorner.Place(new PixelRect(work.X, work.Y, work.Width, work.Height), Width, Height);
-        AppWindow.MoveAndResize(new RectInt32(place.X, place.Y, Width, Height));
+        // Width/Height are DIPs; the corner maths works in pixels.
+        var pixelWidth = DpiScale.Px(this, Width);
+        var pixelHeight = DpiScale.Px(this, Height);
+        var place = FocusCorner.Place(new PixelRect(work.X, work.Y, work.Width, work.Height), pixelWidth, pixelHeight);
+        AppWindow.MoveAndResize(new RectInt32(place.X, place.Y, pixelWidth, pixelHeight));
     }
 
     private RectInt32 WorkArea()

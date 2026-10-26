@@ -23,11 +23,14 @@ internal static class WindowChrome
 
         try
         {
-            window.AppWindow.Resize(new SizeInt32(width, height));
+            var scale = DpiScale.Of(window);
+            window.AppWindow.Resize(new SizeInt32(
+                DpiScale.Px(scale, width),
+                DpiScale.Px(scale, height)));
             if (window.AppWindow.Presenter is OverlappedPresenter presenter)
             {
-                presenter.PreferredMinimumWidth = (int)minWidth;
-                presenter.PreferredMinimumHeight = (int)minHeight;
+                presenter.PreferredMinimumWidth = DpiScale.Px(scale, minWidth);
+                presenter.PreferredMinimumHeight = DpiScale.Px(scale, minHeight);
             }
         }
         catch (Exception)
@@ -42,6 +45,8 @@ internal static class WindowChrome
     {
         try
         {
+            // Saved sizes are DIPs, so the same window looks the same size at any scaling.
+            var scale = DpiScale.Of(window);
             var width = (int)(settings.WindowWidth ?? fallbackWidth);
             var height = (int)(settings.WindowHeight ?? fallbackHeight);
 
@@ -52,10 +57,12 @@ internal static class WindowChrome
 
             width = Math.Clamp(width, Math.Min(820, fallbackWidth), 4000);
             height = Math.Clamp(height, 480, 4000);
-            window.AppWindow.Resize(new SizeInt32(width, height));
+            var pixelWidth = DpiScale.Px(scale, width);
+            var pixelHeight = DpiScale.Px(scale, height);
+            window.AppWindow.Resize(new SizeInt32(pixelWidth, pixelHeight));
 
             if (settings.WindowLeft is double left && settings.WindowTop is double top
-                && IsVisibleOnScreen((int)left, (int)top, width, height))
+                && IsVisibleOnScreen((int)left, (int)top, pixelWidth, pixelHeight))
             {
                 window.AppWindow.Move(new PointInt32((int)left, (int)top));
             }
@@ -80,8 +87,8 @@ internal static class WindowChrome
                 settings.WindowTop = area.Y;
             }
 
-            settings.WindowWidth = size.Width;
-            settings.WindowHeight = size.Height;
+            settings.WindowWidth = DpiScale.Dips(window, size.Width);
+            settings.WindowHeight = DpiScale.Dips(window, size.Height);
         }
         catch (Exception)
         {

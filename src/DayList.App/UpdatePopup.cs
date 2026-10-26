@@ -147,9 +147,13 @@ internal sealed class UpdatePopup : Window
         {
             var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary);
             var work = area.WorkArea;
-            var x = work.X + work.Width - Width - 20;
-            var y = work.Y + work.Height - Height - 20;
-            AppWindow.MoveAndResize(new RectInt32(x, y, Width, Height));
+            // Width/Height above are DIPs; the work area and the window are pixels.
+            var pixelWidth = DpiScale.Px(this, Width);
+            var pixelHeight = DpiScale.Px(this, Height);
+            var margin = DpiScale.Px(this, 20);
+            var x = work.X + work.Width - pixelWidth - margin;
+            var y = work.Y + work.Height - pixelHeight - margin;
+            AppWindow.MoveAndResize(new RectInt32(x, y, pixelWidth, pixelHeight));
         }
         catch
         {

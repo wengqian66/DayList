@@ -21,6 +21,7 @@ namespace DayList;
 /// </summary>
 public sealed partial class QuickAddWindow : Window
 {
+    private const int BarWidth = 640;
     private const int BaseHeight = 220;
     private const int TimePaneHeight = 280;
 
@@ -66,10 +67,12 @@ public sealed partial class QuickAddWindow : Window
         {
             var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary);
             var wa = area.WorkArea;
-            const int width = 640;
-            var x = wa.X + (wa.Width - width) / 2;
-            var y = wa.Y + (wa.Height - BaseHeight) / 2;
-            AppWindow.MoveAndResize(new RectInt32(x, y, width, BaseHeight));
+            // Everything above is DIPs; the window takes pixels.
+            var pixelWidth = DpiScale.Px(this, BarWidth);
+            var pixelHeight = DpiScale.Px(this, BaseHeight);
+            var x = wa.X + (wa.Width - pixelWidth) / 2;
+            var y = wa.Y + (wa.Height - pixelHeight) / 2;
+            AppWindow.MoveAndResize(new RectInt32(x, y, pixelWidth, pixelHeight));
         }
         catch
         {
@@ -348,8 +351,9 @@ public sealed partial class QuickAddWindow : Window
         Input.Focus(FocusState.Programmatic);
     }
 
-    private void AnimateHeight(int target)
+    private void AnimateHeight(int targetDips)
     {
+        var target = DpiScale.Px(this, targetDips);
         _animFrom = AppWindow.Size.Height;
         _animTo = target;
         _animCenterY = AppWindow.Position.Y + _animFrom / 2;

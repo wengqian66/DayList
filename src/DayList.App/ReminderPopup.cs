@@ -332,8 +332,9 @@ internal sealed class ReminderPopup : Window
 
     private void MoveToStack(int stackIndex, bool expanded)
     {
-        var width = expanded ? ExpandedWidth : CompactWidth;
-        var height = expanded ? ExpandedHeight : CompactHeight;
+        // The sizes above are DIPs; the corner maths and the window are pixels.
+        var width = DpiScale.Px(this, expanded ? ExpandedWidth : CompactWidth);
+        var height = DpiScale.Px(this, expanded ? ExpandedHeight : CompactHeight);
         var work = WorkArea();
         var place = ReminderCorner.Place(
             new PixelRect(work.X, work.Y, work.Width, work.Height),
